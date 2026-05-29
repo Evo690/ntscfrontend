@@ -1,0 +1,17 @@
+{
+  "inputs": [
+    "z",
+    "x_norm",
+    "difficulty",
+    "maxMarks_norm"
+  ],
+  "output": "percentile (0-1)",
+  "avg_N": 655.4808225387239,
+  "maxMarks_ref": 300,
+  "stat_constants": {
+    "slope_tgn": -0.6776,
+    "intercept_tgn": 0.813,
+    "slope_k": -4.6774,
+    "intercept_k": 4.574
+  }
+}

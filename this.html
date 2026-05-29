@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Naryana Rank Predictor</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <style>
+    :root {
+      --bg:         #0a0a0a;
+      --surface:    #141414;
+      --surface2:   #1c1c1c;
+      --border:     #242424;
+      --border2:    #1e1e1e;
+      --text:       #efefef;
+      --sub:        #777;
+      --dim:        #3a3a3a;
+      --accent:     #c8f135;
+      --accent-dim: #8aaa20;
+      --warn:       #f0b429;
+      --warn-bg:    #1a1200;
+      --good:       #6fcf6f;
+      --good-bg:    #071207;
+      --red:        #e05c5c;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 52px 16px 100px;
+    }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-bottom: 36px; }
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+    .header p { font-size: 13px; color: var(--sub); }
+
+    /* ── Status pill ── */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 32px;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--dim);
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .dot.loading { background: var(--warn); animation: blink 1s infinite; }
+    .dot.ready   { background: var(--accent); }
+    .dot.error   { background: var(--red); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    /* ── Cards ── */
+    .card {
+      width: 100%;
+      max-width: 460px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
+      margin-bottom: 16px;
+    }
+
+    .card-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--sub);
+      margin-bottom: 18px;
+    }
+
+    /* ── Fields ── */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label {
+      font-size: 12px;
+      color: var(--sub);
+      font-weight: 500;
+    }
+    .field input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 13px;
+      font-size: 15px;
+      color: var(--text);
+      width: 100%;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+    .field input::-webkit-outer-spin-button,
+    .field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .field input:focus { outline: none; border-color: var(--accent); }
+    .field input::placeholder { color: var(--dim); }
+    .field .hint { font-size: 11px; color: var(--dim); }
+
+    /* ── Button ── */
+    .btn {
+      width: 100%;
+      margin-top: 6px;
+      padding: 13px;
+      background: var(--accent);
+      color: #0a0a0a;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover  { opacity: 0.85; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled {
+      background: var(--dim);
+      color: var(--sub);
+      cursor: not-allowed;
+    }
+
+    /* ── Result ── */
+    #result { display: none; }
+
+    .hero {
+      text-align: center;
+      padding: 4px 0 22px;
+    }
+    .hero .big {
+      font-size: 68px;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .hero .lbl {
+      font-size: 13px;
+      color: var(--sub);
+      margin-top: 5px;
+    }
+
+    .prog-wrap {
+      height: 5px;
+      background: var(--border2);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .prog-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 1s cubic-bezier(.4,0,.2,1);
+    }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 20px; }
+    .stat {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 11px;
+      padding: 13px 14px;
+    }
+    .stat .sl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--sub); margin-bottom: 5px; }
+    .stat .sv { font-size: 21px; font-weight: 700; }
+    .stat .ss { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+    /* pipeline */
+    .pipe { border: 1px solid var(--border2); border-radius: 11px; overflow: hidden; }
+    .pipe-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border2);
+    }
+    .pipe-row:last-child { border-bottom: none; }
+    .pipe-row.highlight  { background: rgba(200,241,53,0.05); }
+    .pl { color: var(--sub); }
+    .pv { font-weight: 600; }
+    .pv.accent { color: var(--accent); }
+    .pipe-sep {
+      padding: 5px 14px;
+      font-size: 11px;
+      color: var(--dim);
+      border-bottom: 1px solid var(--border2);
+      background: var(--bg);
+    }
+
+    /* alerts */
+    .alert {
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      line-height: 1.6;
+      margin-top: 12px;
+      display: none;
+    }
+    .alert-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid #2a1e00; }
+    .alert-good { background: var(--good-bg); color: var(--good); border: 1px solid #0f2a0f; }
+    .alert-red  { background: #140505; color: var(--red); border: 1px solid #2a0808; }
+
+    .footer {
+      margin-top: 28px;
+      font-size: 11px;
+      color: var(--dim);
+      text-align: center;
+      line-height: 2;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>JEE Rank Predictor</h1>
+  <p>Statistical normalization · Neural prediction · Batch-trained</p>
+</div>
+
+<div class="pill">
+  <div class="dot loading" id="dot"></div>
+  <span id="status">Loading model...</span>
+</div>
+
+<!-- Input -->
+<div class="card">
+  <p class="card-label">Test parameters</p>
+
+  <div class="grid2" style="margin-bottom:12px;">
+    <div class="field">
+      <label>Expected score</label>
+      <input type="number" id="inp-score" placeholder="e.g. 210" min="0"/>
+    </div>
+    <div class="field">
+      <label>Max marks</label>
+      <input type="number" id="inp-max" placeholder="e.g. 300" min="1"/>
+      <span class="hint">180 · 198 · 300</span>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:20px;">
+    <div class="field">
+      <label>Estimated class avg</label>
+      <input type="number" id="inp-avg" placeholder="e.g. 120" min="0"/>
+    </div>
+    <div class="field">
+      <label>Total students</label>
+      <input type="number" id="inp-N" placeholder="auto" min="1"/>
+      <span class="hint">leave blank for auto</span>
+    </div>
+  </div>
+
+  <button class="btn" id="btn" onclick="predict()" disabled>Predict my rank</button>
+</div>
+
+<!-- Result -->
+<div class="card" id="result">
+  <p class="card-label">Prediction</p>
+
+  <div class="hero">
+    <div class="big" id="r-pct">—</div>
+    <div class="lbl">Predicted percentile</div>
+  </div>
+
+  <div class="prog-wrap">
+    <div class="prog-fill" id="r-prog"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="sl">Estimated rank</div>
+      <div class="sv" id="r-rank">—</div>
+      <div class="ss" id="r-rank-sub">—</div>
+    </div>
+    <div class="stat">
+      <div class="sl">Est. topper score</div>
+      <div class="sv" id="r-topper">—</div>
+      <div class="ss">stat. estimate</div>
+    </div>
+    <div class="stat">
+      <div class="sl">Difficulty</div>
+      <div class="sv" id="r-diff">—</div>
+      <div class="ss">avg / max marks</div>
+    </div>
+    <div class="stat">
+      <div class="sl">Above avg by</div>
+      <div class="sv" id="r-gap">—</div>
+      <div class="ss">raw marks</div>
+    </div>
+  </div>
+
+  <p class="card-label">Normalization pipeline</p>
+  <div class="pipe">
+    <div class="pipe-row">
+      <span class="pl">difficulty = avg / max</span>
+      <span class="pv" id="p-diff">—</span>
+    </div>
+    <div class="pipe-row">
+      <span class="pl">est. topper gap norm</span>
+      <span class="pv" id="p-tgn">—</span>
+    </div>
+    <div class="pipe-row">
+      <span class="pl">est. topper</span>
+      <span class="pv" id="p-topper">—</span>
+    </div>
+    <div class="pipe-row">
+      <span class="pl">dynamic k</span>
+      <span class="pv" id="p-k">—</span>
+    </div>
+    <div class="pipe-row">
+      <span class="pl">sigma σ</span>
+      <span class="pv" id="p-sigma">—</span>
+    </div>
+    <div class="pipe-row">
+      <span class="pl">z-score</span>
+      <span class="pv" id="p-z">—</span>
+    </div>
+    <div class="pipe-row">
+      <span class="pl">x norm (vs topper)</span>
+      <span class="pv" id="p-xnorm">—</span>
+    </div>
+    <div class="pipe-sep">↓ RankNet</div>
+    <div class="pipe-row highlight">
+      <span class="pl">percentile</span>
+      <span class="pv accent" id="p-pct">—</span>
+    </div>
+  </div>
+
+  <div class="alert alert-warn" id="al-low">
+    ⚠ Score is at or below class average. Model has limited data in this range — treat with caution.
+  </div>
+  <div class="alert alert-red" id="al-over">
+    ⚠ Score exceeds estimated topper. Clamped to topper — you're likely in the top 1%.
+  </div>
+  <div class="alert alert-warn" id="al-extrap">
+    ⚠ Paper difficulty is outside training range. Prediction confidence is lower.
+  </div>
+  <div class="alert alert-good" id="al-good">
+    ✓ Score is well above average. Prediction confidence is high.
+  </div>
+</div>
+
+<div class="footer">
+  Trained on leaderboard + student data from your batch.<br/>
+  Inputs normalized via fitted statistical constants before inference.
+</div>
+
+<script>
+  let model  = null;
+  let meta   = null;
+
+  // ── Load model + meta ──────────────────────────────────────────────────────
+
+  async function init() {
+    const dot  = document.getElementById("dot");
+    const stat = document.getElementById("status");
+    const btn  = document.getElementById("btn");
+
+    try {
+      dot.className = "dot loading";
+      stat.textContent = "Loading model...";
+      [model, meta] = await Promise.all([
+        tf.loadLayersModel("models/ranknet/model.json"),
+        fetch("models/ranknet/meta.json").then(r => r.json())
+      ]);
+      dot.className    = "dot ready";
+      stat.textContent = "Model ready ✓";
+      btn.disabled     = false;
+      btn.textContent  = "Predict my rank";
+    } catch(e) {
+      dot.className    = "dot error";
+      stat.textContent = "Failed to load: " + e.message;
+      console.error(e);
+    }
+  }
+
+  // ── Statistical normalization (mirrors train_ranknet.py exactly) ───────────
+
+  function estimateTopper(avg, maxMarks) {
+    const { slope_tgn, intercept_tgn } = meta.stat_constants;
+    const difficulty     = avg / maxMarks;
+    const topperGapNorm  = slope_tgn * difficulty + intercept_tgn;
+    const topper         = avg + topperGapNorm * maxMarks;
+    return Math.min(topper, maxMarks);
+  }
+
+  function dynamicK(difficulty) {
+    const { slope_k, intercept_k } = meta.stat_constants;
+    return slope_k * difficulty + intercept_k;
+  }
+
+  function normalizeInput(score, avg, maxMarks) {
+    const difficulty    = avg / maxMarks;
+    const topper        = estimateTopper(avg, maxMarks);
+    const k             = dynamicK(difficulty);
+    const sigma         = k > 0 ? (topper - avg) / k : 1.0;
+    const z             = sigma > 0 ? (score - avg) / sigma : 0.0;
+    const gap           = topper - avg;
+    let   x_norm        = gap > 0 ? (score - avg) / gap : 0.0;
+    const rawX          = x_norm;
+    x_norm              = Math.max(0.01, Math.min(x_norm, 1.0));
+    const maxMarks_norm = maxMarks / meta.maxMarks_ref;
+    return { z, x_norm, rawX, difficulty, maxMarks_norm, topper, k, sigma };
+  }
+
+  // ── Predict ────────────────────────────────────────────────────────────────
+
+  async function predict() {
+    const score = parseFloat(document.getElementById("inp-score").value);
+    const maxM  = parseFloat(document.getElementById("inp-max").value);
+    const avg   = parseFloat(document.getElementById("inp-avg").value);
+    const N_in  = parseFloat(document.getElementById("inp-N").value);
+
+    if (isNaN(score) || isNaN(maxM) || isNaN(avg)) {
+      alert("Please fill in score, max marks and class average."); return;
+    }
+    if (avg >= maxM)  { alert("Average can't exceed max marks."); return; }
+    if (score < 0)    { alert("Score can't be negative."); return; }
+
+    const {
+      z, x_norm, rawX, difficulty,
+      maxMarks_norm, topper, k, sigma
+    } = normalizeInput(score, avg, maxM);
+
+    // run model
+    const input  = tf.tensor2d([[z, x_norm, difficulty, maxMarks_norm]]);
+    const output = model.predict(input);
+    const pct    = (await output.data())[0] * 100;
+    input.dispose(); output.dispose();
+
+    const N    = isNaN(N_in) ? meta.avg_N : N_in;
+    const rank = Math.round(N * (1 - pct / 100));
+    const gap  = score - avg;
+
+    // ── Update stats ──────────────────────────────────────────────────────────
+    document.getElementById("r-pct").textContent      = pct.toFixed(1) + "%";
+    document.getElementById("r-prog").style.width     = Math.min(pct,100).toFixed(1) + "%";
+    document.getElementById("r-rank").textContent     = "~" + rank;
+    document.getElementById("r-rank-sub").textContent = "out of ~" + Math.round(N);
+    document.getElementById("r-topper").textContent   = Math.round(topper);
+    document.getElementById("r-diff").textContent     = (difficulty * 100).toFixed(1) + "%";
+    document.getElementById("r-gap").textContent      = (gap >= 0 ? "+" : "") + gap.toFixed(0);
+
+    // ── Update pipeline ───────────────────────────────────────────────────────
+    const tgn = meta.stat_constants.slope_tgn * difficulty + meta.stat_constants.intercept_tgn;
+    document.getElementById("p-diff").textContent   = difficulty.toFixed(4);
+    document.getElementById("p-tgn").textContent    = tgn.toFixed(4);
+    document.getElementById("p-topper").textContent = Math.round(topper) + " / " + maxM;
+    document.getElementById("p-k").textContent      = k.toFixed(4);
+    document.getElementById("p-sigma").textContent  = sigma.toFixed(4);
+    document.getElementById("p-z").textContent      = z.toFixed(4);
+    document.getElementById("p-xnorm").textContent  = rawX.toFixed(4) + " → " + x_norm.toFixed(4);
+    document.getElementById("p-pct").textContent    = pct.toFixed(3) + "%";
+
+    // ── Alerts ────────────────────────────────────────────────────────────────
+    document.getElementById("al-low").style.display    = rawX <= 0.05 ? "block" : "none";
+    document.getElementById("al-over").style.display   = rawX > 1.0  ? "block" : "none";
+    document.getElementById("al-extrap").style.display = (difficulty < 0.248 || difficulty > 0.594) ? "block" : "none";
+    document.getElementById("al-good").style.display   = (rawX > 0.25 && rawX <= 1.0 && difficulty >= 0.248 && difficulty <= 0.594) ? "block" : "none";
+
+    document.getElementById("result").style.display = "block";
+    document.getElementById("result").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  init();
+</script>
+</body>
+</html>

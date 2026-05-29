@@ -1,0 +1,1918 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>FY Coaching — Student Portal</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Space+Mono:wght@400;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <!-- LOGIN SCREEN -->
+        <div id="login-screen">
+            <form class="login-card" id="login-form">
+                <div class="logo-icon" style="margin: 0 auto 8px">FY</div>
+                <div class="login-title">FY Coaching Login</div>
+                <div class="login-error" id="login-error"></div>
+                <input
+                    class="login-input"
+                    id="login-user"
+                    placeholder="Mobile Number or Username"
+                    required
+                    autocomplete="username"
+                />
+                <input
+                    class="login-input"
+                    id="login-pass"
+                    type="password"
+                    placeholder="Password"
+                    required
+                    autocomplete="current-password"
+                />
+                <button class="login-btn" id="login-submit" type="submit">
+                    Login
+                </button>
+            </form>
+        </div>
+
+        <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+        <div class="app">
+            <!-- SIDEBAR -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-logo">
+                    <div class="logo-icon">FY</div>
+                    <div>
+                        <div class="logo-text">FY Coaching</div>
+                        <div class="logo-sub">Student Portal</div>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-label">Main</div>
+                    <button
+                        class="nav-item active"
+                        onclick="nav('dashboard', this)"
+                    >
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <rect x="1" y="1" width="6" height="6" rx="1.5" />
+                            <rect x="9" y="1" width="6" height="6" rx="1.5" />
+                            <rect x="1" y="9" width="6" height="6" rx="1.5" />
+                            <rect x="9" y="9" width="6" height="6" rx="1.5" />
+                        </svg>
+                        Dashboard
+                    </button>
+                    <button class="nav-item" onclick="nav('courses', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <path d="M2 4h12M2 8h8M2 12h10" />
+                        </svg>
+                        My Courses
+                    </button>
+                    <button class="nav-item" onclick="nav('messages', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <path
+                                d="M14 2H2a1 1 0 00-1 1v8a1 1 0 001 1h3l3 2 3-2h3a1 1 0 001-1V3a1 1 0 00-1-1z"
+                            />
+                        </svg>
+                        Messages
+                    </button>
+                    <button class="nav-item" onclick="nav('timetable', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <rect x="1" y="2" width="14" height="13" rx="1.5" />
+                            <path d="M5 1v3M11 1v3M1 7h14" />
+                        </svg>
+                        Time Table
+                    </button>
+
+                    <!-- NEW ATTENDANCE SIDEBAR BUTTON -->
+                    <button
+                        class="nav-item"
+                        onclick="
+                            openAttendanceModal();
+                            if (window.innerWidth <= 768) closeSidebar();
+                        "
+                    >
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M9 11l3 3L22 4" />
+                            <path
+                                d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
+                            />
+                        </svg>
+                        Attendance
+                    </button>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-label">Exam</div>
+                    <button class="nav-item" onclick="nav('examhall', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <path
+                                d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"
+                            />
+                            <path d="M6 6h4M6 9h4M6 12h2" />
+                        </svg>
+                        Examination Hall
+                    </button>
+                    <button class="nav-item" onclick="nav('examcal', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <rect x="1" y="2" width="14" height="13" rx="1.5" />
+                            <path
+                                d="M5 1v3M11 1v3M1 7h14M5 10h1M8 10h1M11 10h1"
+                            />
+                        </svg>
+                        Exam Calendar
+                    </button>
+                    <button class="nav-item" onclick="nav('neural', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <circle cx="8" cy="8" r="2" />
+                            <circle cx="3" cy="4" r="1.5" />
+                            <circle cx="13" cy="4" r="1.5" />
+                            <circle cx="3" cy="12" r="1.5" />
+                            <circle cx="13" cy="12" r="1.5" />
+                            <path
+                                d="M4.4 4.8 6.5 7M9.5 7l2.1-2.2M4.4 11.2 6.5 9M9.5 9l2.1 2.2"
+                            />
+                        </svg>
+                        Neural Network
+                    </button>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-label">ERA</div>
+                    <button class="nav-item" onclick="nav('era', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <path d="M2 13h12" />
+                            <path d="M4 11V5l4-2 4 2v6" />
+                            <path d="M6 11V7h4v4" />
+                        </svg>
+                        Forced Results
+                    </button>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-label">Resources</div>
+                    <button class="nav-item" onclick="nav('study', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path
+                                d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"
+                            ></path>
+                        </svg>
+                        Study Content
+                    </button>
+                    <button class="nav-item" onclick="nav('practice', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path
+                                d="M10 2v6.5L4.2 18.7A2.2 2.2 0 0 0 6.1 22h11.8a2.2 2.2 0 0 0 1.9-3.3L14 8.5V2"
+                            ></path>
+                            <path d="M8 2h8"></path>
+                            <path d="M7.2 17h9.6"></path>
+                        </svg>
+                        Practice
+                    </button>
+                    <button class="nav-item" onclick="nav('notices', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                        >
+                            <rect x="1" y="2" width="14" height="12" rx="1.5" />
+                            <path d="M5 6h6M5 9h4" />
+                        </svg>
+                        Notice Board
+                    </button>
+                    <button class="nav-item" onclick="nav('settings', this)">
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-.33-1 1.65 1.65 0 0 0-1-.6 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1-.33H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1-.33 1.65 1.65 0 0 0 .6-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 .33 1 1.65 1.65 0 0 0 1 .6 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.26.3.45.65.55 1.03.1.38.1.77 0 1.15-.1.38-.29.73-.55 1.03z"
+                            ></path>
+                        </svg>
+                        Settings
+                    </button>
+                </div>
+
+                <div style="flex: 1"></div>
+                <div
+                    style="
+                        padding: 16px 18px;
+                        border-top: 1px solid var(--border);
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    "
+                >
+                    <div
+                        class="avatar"
+                        id="sidebar-avatar"
+                        style="width: 36px; height: 36px; font-size: 13px"
+                    >
+                        ST
+                    </div>
+                    <div>
+                        <div
+                            style="
+                                font-size: 13px;
+                                font-weight: 500;
+                                color: var(--text);
+                            "
+                            id="sidebar-name"
+                        >
+                            Student
+                        </div>
+                        <div style="font-size: 11px; color: var(--text3)">
+                            Student Portal
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- MAIN -->
+            <div class="main">
+                <div class="topbar">
+                    <button
+                        class="hamburger"
+                        id="hamburger"
+                        onclick="toggleSidebar()"
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                        >
+                            <path d="M3 6h14M3 10h14M3 14h14" />
+                        </svg>
+                    </button>
+                    <div class="topbar-title" id="page-title">Dashboard</div>
+                    <div class="topbar-search-wrap">
+                        <input
+                            id="global-search"
+                            class="topbar-search"
+                            placeholder="Search courses, notices, study content..."
+                        />
+                    </div>
+                    <div class="sync-pill" id="sync-pill">Live</div>
+                    <div class="notif-btn" onclick="logout()">
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="var(--text2)"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path
+                                d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
+                            ></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="avatar" id="top-avatar">ST</div>
+                </div>
+                <div class="subnav" id="subnav"></div>
+
+                <div class="content">
+                    <!-- DASHBOARD -->
+                    <div class="page active" id="page-dashboard">
+                        <div class="card dashboard-priority-card">
+                            <div class="card-header">
+                                <div class="card-title">Today's Classes</div>
+                                <div
+                                    class="card-action"
+                                    onclick="
+                                        nav(
+                                            'timetable',
+                                            document.querySelector(
+                                                '[onclick*=timetable]',
+                                            ),
+                                        )
+                                    "
+                                >
+                                    Timetable
+                                </div>
+                            </div>
+                            <div id="today-classes-list">
+                                <div class="empty">
+                                    Loading today's classes...
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stats-row">
+                            <div
+                                class="stat-card"
+                                onclick="
+                                    nav(
+                                        'era',
+                                        document.querySelector(
+                                            '.nav-item[onclick*=era]',
+                                        ),
+                                    )
+                                "
+                                style="cursor: pointer"
+                            >
+                                <div class="stat-label">Batch Rank</div>
+                                <div class="stat-val" id="dash-batch-rank">
+                                    --
+                                </div>
+                                <div class="stat-sub" id="dash-rank-sub">
+                                    Based on latest exams
+                                </div>
+                            </div>
+                            <div
+                                class="stat-card"
+                                onclick="
+                                    nav(
+                                        'era',
+                                        document.querySelector(
+                                            '.nav-item[onclick*=era]',
+                                        ),
+                                    )
+                                "
+                                style="cursor: pointer"
+                            >
+                                <div
+                                    class="stat-label"
+                                    id="dash-test-name"
+                                    style="
+                                        white-space: nowrap;
+                                        overflow: hidden;
+                                        text-overflow: ellipsis;
+                                    "
+                                >
+                                    Latest Test
+                                </div>
+                                <div class="stat-val" id="dash-test-score">
+                                    --
+                                </div>
+                                <div class="stat-sub" id="dash-test-sub">
+                                    Loading...
+                                </div>
+                            </div>
+                            <div class="stat-card" style="position: relative">
+                                <div
+                                    style="
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: flex-start;
+                                    "
+                                >
+                                    <div class="stat-label">Attendance</div>
+                                    <button
+                                        onclick="openAttendanceModal()"
+                                        style="
+                                            background: var(--bg3);
+                                            color: var(--text);
+                                            border: 1px solid var(--border);
+                                            border-radius: 6px;
+                                            padding: 3px 8px;
+                                            font-size: 10px;
+                                            font-weight: 600;
+                                            cursor: pointer;
+                                        "
+                                    >
+                                        View
+                                    </button>
+                                </div>
+                                <div class="stat-val" id="att-val">--%</div>
+                                <div class="stat-sub" id="att-sub">
+                                    Loading...
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="two-col">
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="card-title">Upcoming Exams</div>
+                                    <div
+                                        class="card-action"
+                                        onclick="
+                                            nav(
+                                                'examcal',
+                                                document.querySelector(
+                                                    '[onclick*=examcal]',
+                                                ),
+                                            )
+                                        "
+                                    >
+                                        Details
+                                    </div>
+                                </div>
+                                <div id="dashboard-upcoming-list">
+                                    <div class="empty">Loading...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MY COURSES -->
+                    <div class="page" id="page-courses">
+                        <div class="card-header" style="margin-bottom: 8px">
+                            <div class="card-title">My Courses</div>
+                            <div
+                                id="courses-count"
+                                style="font-size: 12px; color: var(--text3)"
+                            >
+                                Loading...
+                            </div>
+                        </div>
+                        <div id="courses-grid" class="three-col">
+                            <div class="empty">Loading courses...</div>
+                        </div>
+                    </div>
+
+                    <!-- MESSAGES -->
+                    <div class="page" id="page-messages">
+                        <!-- Split Interface for Messages -->
+                        <div class="msg-sidebar">
+                            <div
+                                class="card-header"
+                                style="
+                                    padding: 16px;
+                                    border-bottom: 1px solid var(--border);
+                                    margin: 0;
+                                "
+                            >
+                                <div class="card-title">Inbox</div>
+                                <div
+                                    id="msg-unread-count"
+                                    style="font-size: 12px; color: var(--text3)"
+                                >
+                                    0 unread
+                                </div>
+                            </div>
+                            <div
+                                id="msg-group-list"
+                                style="
+                                    flex: 1;
+                                    overflow-y: auto;
+                                    padding: 12px;
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 8px;
+                                "
+                            >
+                                <div class="empty">Loading messages...</div>
+                            </div>
+                        </div>
+
+                        <div class="msg-content">
+                            <div
+                                class="card-header"
+                                style="
+                                    padding: 16px;
+                                    border-bottom: 1px solid var(--border);
+                                    margin: 0;
+                                    background: var(--bg3);
+                                    gap: 10px;
+                                    justify-content: flex-start;
+                                "
+                            >
+                                <button
+                                    class="msg-back"
+                                    onclick="closeMessageThread()"
+                                >
+                                    Back
+                                </button>
+                                <div class="card-title" id="msg-thread-title">
+                                    Select a conversation
+                                </div>
+                            </div>
+                            <div
+                                id="msg-thread-list"
+                                style="
+                                    flex: 1;
+                                    overflow-y: auto;
+                                    padding: 16px;
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 16px;
+                                "
+                            >
+                                <div class="empty" style="margin: auto">
+                                    No conversation selected
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TIMETABLE -->
+                    <div class="page" id="page-timetable">
+                        <div class="manual-tool-row">
+                            <select
+                                id="tt-year-selector"
+                                class="tt-select"
+                                style="min-width: 120px"
+                                onchange="changeTtYear(this.value)"
+                            ></select>
+                            <select
+                                id="tt-batch-selector"
+                                class="tt-select"
+                                style="max-width: 250px; display: none"
+                                onchange="changeTtBatch(this.value)"
+                            ></select>
+                            <form
+                                class="manual-tool-form"
+                                onsubmit="loadTimetableByBatchId(event)"
+                            >
+                                <input
+                                    id="manual-batch-id"
+                                    class="manual-tool-input"
+                                    placeholder="Batch ID"
+                                    inputmode="numeric"
+                                />
+                                <button class="start-btn gray" type="submit">
+                                    Load Batch
+                                </button>
+                            </form>
+                        </div>
+                        <div class="full-card">
+                            <div class="card-header">
+                                <div class="card-title">Weekly Timetable</div>
+                                <div
+                                    id="timetable-range"
+                                    style="font-size: 12px; color: var(--text3)"
+                                >
+                                    Current week
+                                </div>
+                            </div>
+                            <div style="overflow-x: auto">
+                                <div
+                                    id="timetable-grid"
+                                    class="tt-grid"
+                                    style="min-width: 600px"
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EXAMINATION HALL -->
+                    <div class="page" id="page-examhall">
+                        <div style="margin-bottom: -6px">
+                            <select
+                                id="exam-year-selector"
+                                class="tt-select"
+                                style="min-width: 120px"
+                                onchange="changeExamYear(this.value)"
+                            ></select>
+                        </div>
+                        <div class="full-card">
+                            <div class="card-header">
+                                <div class="card-title">Examination Hall</div>
+                                <div
+                                    id="examhall-count"
+                                    style="font-size: 12px; color: var(--text3)"
+                                >
+                                    Loading...
+                                </div>
+                            </div>
+                            <div id="examhall-list">
+                                <div class="empty">
+                                    Loading exam hall tests...
+                                </div>
+                            </div>
+                            <button
+                                id="examhall-load-more"
+                                class="start-btn gray"
+                                style="
+                                    width: 100%;
+                                    display: none;
+                                    margin-top: 12px;
+                                "
+                                onclick="loadMoreExamTests()"
+                            >
+                                Show More
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ERA / FORCED RESULTS -->
+                    <div class="page" id="page-era">
+                        <div class="manual-tool-row">
+                            <select
+                                id="era-year-selector"
+                                class="tt-select"
+                                style="min-width: 120px"
+                                onchange="changeEraYear(this.value)"
+                            ></select>
+                            <form
+                                class="manual-tool-form"
+                                onsubmit="openForcedResultByTestId(event)"
+                            >
+                                <input
+                                    id="manual-force-test-id"
+                                    class="manual-tool-input"
+                                    placeholder="Test ID"
+                                    inputmode="numeric"
+                                />
+                                <button class="start-btn gray" type="submit">
+                                    Force Result
+                                </button>
+                            </form>
+                        </div>
+                        <div class="full-card">
+                            <div class="card-header">
+                                <div class="card-title">ERA Forced Results</div>
+                                <div
+                                    id="era-count"
+                                    style="font-size: 12px; color: var(--text3)"
+                                >
+                                    Loading...
+                                </div>
+                            </div>
+                            <div id="era-list">
+                                <div class="empty">Loading tests...</div>
+                            </div>
+                            <button
+                                id="era-load-more"
+                                class="start-btn gray"
+                                style="
+                                    width: 100%;
+                                    display: none;
+                                    margin-top: 12px;
+                                "
+                                onclick="loadMoreEraTests()"
+                            >
+                                Show More
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- RESULT DETAIL -->
+                    <div class="page" id="page-result-detail">
+                        <div class="full-card">
+                            <div
+                                class="card-header"
+                                style="gap: 10px; justify-content: flex-start"
+                            >
+                                <button
+                                    class="start-btn gray"
+                                    style="margin-top: 0; padding: 6px 12px"
+                                    onclick="backToResultsList()"
+                                >
+                                    Back
+                                </button>
+                                <div class="card-title">Result Detail</div>
+                            </div>
+                            <div id="result-detail-body">
+                                <div class="empty">
+                                    Open a result from Exam Hall or ERA.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- LEADERBOARD -->
+                    <div class="page" id="page-leaderboard">
+                        <div class="full-card">
+                            <div
+                                class="card-header"
+                                style="gap: 10px; justify-content: flex-start"
+                            >
+                                <button
+                                    class="start-btn gray"
+                                    style="margin-top: 0; padding: 6px 12px"
+                                    onclick="nav('result-detail')"
+                                >
+                                    Back
+                                </button>
+                                <div class="card-title">Leaderboard Top 50</div>
+                            </div>
+                            <div id="leaderboard-body">
+                                <div class="empty">Open a result first.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EXAM CALENDAR -->
+                    <div class="page" id="page-examcal">
+                        <div class="full-card">
+                            <div class="card-header">
+                                <div class="card-title" id="examcal-title">
+                                    Exam Calendar
+                                </div>
+                            </div>
+                            <div
+                                id="examcal-list"
+                                style="
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 8px;
+                                "
+                            >
+                                <div class="empty">
+                                    Loading exam calendar...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NEURAL NETWORK -->
+                    <div class="page" id="page-neural">
+                        <!-- RANK PREDICTOR CARD -->
+                        <div class="full-card neural-card">
+                            <div
+                                class="card-header"
+                                style="
+                                    justify-content: space-between;
+                                    align-items: flex-start;
+                                    gap: 12px;
+                                "
+                            >
+                                <div>
+                                    <div class="card-title">
+                                        IT-rank pridictor
+                                    </div>
+                                    <div class="neural-subtitle">
+                                        Statistical normalization · Neural
+                                        prediction · Batch-trained
+                                    </div>
+                                </div>
+                                <div class="rank-pill">
+                                    <div
+                                        class="rank-dot loading"
+                                        id="rank-dot"
+                                    ></div>
+                                    <span
+                                        id="rank-status"
+                                        style="
+                                            font-size: 11px;
+                                            color: var(--text3);
+                                            font-weight: 500;
+                                        "
+                                        >Loading...</span
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="rank-predictor-container">
+                                <!-- Inputs -->
+                                <div class="rank-inputs-section">
+                                    <div
+                                        class="rank-grid2"
+                                        style="margin-bottom: 4px"
+                                    >
+                                        <div class="rank-field">
+                                            <label for="inp-score"
+                                                >Expected Score</label
+                                            >
+                                            <input
+                                                type="number"
+                                                id="inp-score"
+                                                class="manual-tool-input"
+                                                placeholder="e.g. 210"
+                                                min="0"
+                                                style="width: 100%"
+                                            />
+                                        </div>
+                                        <div class="rank-field">
+                                            <label for="inp-max"
+                                                >Max Marks</label
+                                            >
+                                            <input
+                                                type="number"
+                                                id="inp-max"
+                                                class="manual-tool-input"
+                                                placeholder="e.g. 300"
+                                                min="1"
+                                                style="width: 100%"
+                                            />
+                                            <span class="hint"
+                                                >180 · 198 · 300</span
+                                            >
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="rank-grid2"
+                                        style="margin-bottom: 12px"
+                                    >
+                                        <div class="rank-field">
+                                            <label for="inp-avg"
+                                                >Estimated Overall
+                                                Average</label
+                                            >
+                                            <input
+                                                type="number"
+                                                id="inp-avg"
+                                                class="manual-tool-input"
+                                                placeholder="e.g. 120"
+                                                min="0"
+                                                style="width: 100%"
+                                            />
+                                        </div>
+                                        <div class="rank-field">
+                                            <label for="inp-N"
+                                                >Total Students</label
+                                            >
+                                            <input
+                                                type="number"
+                                                id="inp-N"
+                                                class="manual-tool-input"
+                                                placeholder="auto"
+                                                min="1"
+                                                style="width: 100%"
+                                            />
+                                            <span class="hint"
+                                                >leave blank for auto</span
+                                            >
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        class="start-btn"
+                                        id="rank-predict-btn"
+                                        onclick="predictRank()"
+                                        disabled
+                                        style="
+                                            width: 100%;
+                                            height: 38px;
+                                            font-size: 13px;
+                                            margin-top: 4px;
+                                        "
+                                    >
+                                        Predict my rank
+                                    </button>
+                                </div>
+
+                                <!-- Result -->
+                                <div
+                                    class="rank-result-section"
+                                    id="rank-result"
+                                    style="
+                                        display: none;
+                                        margin-top: 20px;
+                                        padding-top: 20px;
+                                        border-top: 1px solid var(--border);
+                                    "
+                                >
+                                    <div
+                                        class="card-title"
+                                        style="
+                                            font-size: 13px;
+                                            margin-bottom: 14px;
+                                        "
+                                    >
+                                        Prediction
+                                    </div>
+
+                                    <div class="rank-hero">
+                                        <div class="big" id="r-pct">—</div>
+                                        <div class="lbl">
+                                            Predicted percentile
+                                        </div>
+                                    </div>
+
+                                    <div class="rank-prog-wrap">
+                                        <div
+                                            class="rank-prog-fill"
+                                            id="r-prog"
+                                        ></div>
+                                    </div>
+
+                                    <div class="rank-stats">
+                                        <div class="rank-stat">
+                                            <div class="sl">Estimated rank</div>
+                                            <div class="sv" id="r-rank">—</div>
+                                            <div class="ss" id="r-rank-sub">
+                                                —
+                                            </div>
+                                        </div>
+                                        <div class="rank-stat">
+                                            <div class="sl">
+                                                Est. topper score
+                                            </div>
+                                            <div class="sv" id="r-topper">
+                                                —
+                                            </div>
+                                            <div class="ss">stat. estimate</div>
+                                        </div>
+                                        <div class="rank-stat">
+                                            <div class="sl">Difficulty</div>
+                                            <div class="sv" id="r-diff">—</div>
+                                            <div class="ss">
+                                                avg / max marks
+                                            </div>
+                                        </div>
+                                        <div class="rank-stat">
+                                            <div class="sl">Above avg by</div>
+                                            <div class="sv" id="r-gap">—</div>
+                                            <div class="ss">raw marks</div>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="card-title"
+                                        style="
+                                            font-size: 13px;
+                                            margin-bottom: 10px;
+                                            margin-top: 16px;
+                                        "
+                                    >
+                                        Normalization pipeline
+                                    </div>
+                                    <div class="rank-pipe">
+                                        <div class="rank-pipe-row">
+                                            <span class="rank-pl"
+                                                >difficulty = avg / max</span
+                                            >
+                                            <span class="rank-pv" id="p-diff"
+                                                >—</span
+                                            >
+                                        </div>
+                                        <div class="rank-pipe-row">
+                                            <span class="rank-pl"
+                                                >est. topper gap norm</span
+                                            >
+                                            <span class="rank-pv" id="p-tgn"
+                                                >—</span
+                                            >
+                                        </div>
+                                        <div class="rank-pipe-row">
+                                            <span class="rank-pl"
+                                                >est. topper</span
+                                            >
+                                            <span class="rank-pv" id="p-topper"
+                                                >—</span
+                                            >
+                                        </div>
+                                        <div class="rank-pipe-row">
+                                            <span class="rank-pl"
+                                                >dynamic k</span
+                                            >
+                                            <span class="rank-pv" id="p-k"
+                                                >—</span
+                                            >
+                                        </div>
+                                        <div class="rank-pipe-row">
+                                            <span class="rank-pl">sigma σ</span>
+                                            <span class="rank-pv" id="p-sigma"
+                                                >—</span
+                                            >
+                                        </div>
+                                        <div class="rank-pipe-row">
+                                            <span class="rank-pl">z-score</span>
+                                            <span class="rank-pv" id="p-z"
+                                                >—</span
+                                            >
+                                        </div>
+                                        <div class="rank-pipe-row">
+                                            <span class="rank-pl"
+                                                >x norm (vs topper)</span
+                                            >
+                                            <span class="rank-pv" id="p-xnorm"
+                                                >—</span
+                                            >
+                                        </div>
+                                        <div class="rank-pipe-sep">
+                                            ↓ RankNet
+                                        </div>
+                                        <div class="rank-pipe-row highlight">
+                                            <span
+                                                class="rank-pl"
+                                                style="color: var(--text2)"
+                                                >percentile</span
+                                            >
+                                            <span
+                                                class="rank-pv accent"
+                                                id="p-pct"
+                                                >—</span
+                                            >
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="rank-alert rank-alert-warn"
+                                        id="al-low"
+                                    >
+                                        ⚠ Score is at or below overall average.
+                                        Model has limited data in this range —
+                                        treat with caution.
+                                    </div>
+                                    <div
+                                        class="rank-alert rank-alert-red"
+                                        id="al-over"
+                                    >
+                                        ⚠ Score exceeds estimated topper.
+                                        Clamped to topper — you're likely in the
+                                        top 1%.
+                                    </div>
+                                    <div
+                                        class="rank-alert rank-alert-warn"
+                                        id="al-extrap"
+                                    >
+                                        ⚠ Paper difficulty is outside training
+                                        range. Prediction confidence is lower.
+                                    </div>
+                                    <div
+                                        class="rank-alert rank-alert-good"
+                                        id="al-good"
+                                    >
+                                        ✓ Score is well above average.
+                                        Prediction confidence is high.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ANONYMOUS DATA CARD -->
+                        <div
+                            class="full-card neural-card"
+                            style="margin-top: 16px"
+                        >
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">
+                                        Share Performance Analytics
+                                    </div>
+                                    <div class="neural-subtitle">
+                                        Contribute to the RankNet predictive
+                                        model
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="neural-panel" style="margin-top: 12px">
+                                <div class="neural-message">
+                                    <div class="neural-title">
+                                        Improve the modle
+                                    </div>
+                                    <div class="neural-copy">
+                                        You can share anonymous test performance
+                                        data now. Leaderboard data is skipped,
+                                        and only cleaned exam metrics are
+                                        posted.
+                                    </div>
+                                </div>
+                                <button
+                                    class="start-btn neural-action"
+                                    id="neural-anon-btn"
+                                    onclick="sendAnonDataToWorker()"
+                                >
+                                    Share Performance Analytics
+                                </button>
+                            </div>
+                            <div
+                                class="neural-status"
+                                id="neural-status"
+                                style="
+                                    margin-top: 12px;
+                                    color: var(--text3);
+                                    font-size: 12px;
+                                "
+                            >
+                                Ready to scrape, clean, and send data.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NOTICE BOARD -->
+                    <div class="page" id="page-notices">
+                        <div class="full-card">
+                            <div class="card-header">
+                                <div class="card-title">Notice Board</div>
+                                <div
+                                    id="notice-count"
+                                    style="font-size: 12px; color: var(--text3)"
+                                >
+                                    Loading...
+                                </div>
+                            </div>
+                            <div
+                                id="notice-list"
+                                style="
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 8px;
+                                "
+                            >
+                                <div class="empty">Loading notices...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STUDY CONTENT -->
+                    <div class="page" id="page-study">
+                        <div class="full-card">
+                            <div class="card-header">
+                                <div class="card-title">Study Content</div>
+                                <div
+                                    id="study-count"
+                                    style="font-size: 12px; color: var(--text3)"
+                                >
+                                    Loading...
+                                </div>
+                            </div>
+                            <div
+                                id="study-list"
+                                style="
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 8px;
+                                    margin-bottom: 12px;
+                                "
+                            >
+                                <div class="empty">
+                                    Loading study materials...
+                                </div>
+                            </div>
+                            <button
+                                id="study-load-more"
+                                class="start-btn gray"
+                                style="
+                                    width: 100%;
+                                    display: none;
+                                    margin-top: 12px;
+                                "
+                                onclick="loadMoreStudyContent()"
+                            >
+                                Load More
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PRACTICE -->
+                    <div class="page" id="page-practice">
+                        <div class="chem-practice-shell">
+                            <div
+                                class="chem-feedback-flash"
+                                id="chem-feedback-flash"
+                            >
+                                Correct
+                            </div>
+
+                            <div
+                                class="chem-practice-content"
+                                id="chem-practice-content"
+                            >
+                                <div class="chem-header">
+                                    <div>
+                                        <div class="chem-kicker">
+                                            Chemistry Practice
+                                        </div>
+                                        <div class="chem-title">ChemMaster</div>
+                                    </div>
+                                    <div class="chem-stat-bar">
+                                        <div
+                                            class="chem-stat-pill"
+                                            id="chem-stat-list"
+                                        >
+                                            List: <strong>0</strong>
+                                        </div>
+                                        <div
+                                            class="chem-stat-pill"
+                                            id="chem-stat-total"
+                                        >
+                                            Total: <strong>0</strong>
+                                        </div>
+                                        <div
+                                            class="chem-stat-pill"
+                                            id="chem-stat-mastered"
+                                        >
+                                            Mastered: <strong>0</strong>
+                                        </div>
+                                        <div
+                                            class="chem-stat-pill"
+                                            id="chem-stat-today-attempts"
+                                        >
+                                            Today: <strong>0</strong>
+                                        </div>
+                                        <div
+                                            class="chem-stat-pill"
+                                            id="chem-stat-7day-attempts"
+                                        >
+                                            7-Day: <strong>0</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    id="chem-view-home"
+                                    class="chem-view active"
+                                >
+                                    <div class="chem-panel">
+                                        <div class="chem-section-label">
+                                            Study
+                                        </div>
+                                        <div class="chem-menu-grid">
+                                            <button
+                                                class="chem-btn chem-btn-primary chem-full-width"
+                                                onclick="chemLearnNew()"
+                                            >
+                                                Add 5 Compounds
+                                            </button>
+                                            <button
+                                                class="chem-btn chem-btn-secondary"
+                                                onclick="chemInitLearn()"
+                                            >
+                                                Learn Mode
+                                            </button>
+                                            <button
+                                                id="chem-btn-practice"
+                                                class="chem-btn chem-btn-secondary"
+                                                onclick="chemInitPractice()"
+                                            >
+                                                Practice Mode
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="chem-panel">
+                                        <div class="chem-section-label">
+                                            Analytics
+                                        </div>
+                                        <div class="chem-menu-grid">
+                                            <button
+                                                class="chem-btn chem-btn-ghost"
+                                                onclick="chemShowStats('weak')"
+                                            >
+                                                Weakest 5
+                                            </button>
+                                            <button
+                                                class="chem-btn chem-btn-ghost"
+                                                onclick="
+                                                    chemShowStats('strong')
+                                                "
+                                            >
+                                                Strongest 5
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="chem-panel">
+                                        <div class="chem-section-label">
+                                            Data
+                                        </div>
+                                        <div class="chem-menu-grid">
+                                            <button
+                                                class="chem-btn chem-btn-ghost"
+                                                onclick="chemExportData()"
+                                            >
+                                                Export
+                                            </button>
+                                            <button
+                                                class="chem-btn chem-btn-ghost"
+                                                onclick="
+                                                    document
+                                                        .getElementById(
+                                                            'chem-import-file',
+                                                        )
+                                                        .click()
+                                                "
+                                            >
+                                                Import
+                                            </button>
+                                            <button
+                                                class="chem-btn chem-btn-primary chem-full-width"
+                                                onclick="chemUploadStats()"
+                                            >
+                                                Upload Stats
+                                            </button>
+                                            <input
+                                                type="file"
+                                                id="chem-import-file"
+                                                class="chem-hidden"
+                                                onchange="chemImportData(event)"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div class="chem-panel">
+                                        <div class="chem-board-head">
+                                            <div>
+                                                <div class="chem-section-label">
+                                                    Leaderboard
+                                                </div>
+                                                <div class="chem-board-sub">
+                                                    Top 30 practice scores
+                                                </div>
+                                            </div>
+                                            <div class="chem-board-tabs">
+                                                <button
+                                                    class="chem-tab-btn active"
+                                                    id="chem-board-today"
+                                                    onclick="
+                                                        chemLoadLeaderboard(
+                                                            'today',
+                                                        )
+                                                    "
+                                                >
+                                                    Today
+                                                </button>
+                                                <button
+                                                    class="chem-tab-btn"
+                                                    id="chem-board-week"
+                                                    onclick="
+                                                        chemLoadLeaderboard(
+                                                            'week',
+                                                        )
+                                                    "
+                                                >
+                                                    Week
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="chem-board-list"
+                                            id="chem-leaderboard-list"
+                                        >
+                                            <div class="empty">
+                                                Loading leaderboard...
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="chem-view-learn" class="chem-view">
+                                    <div class="chem-panel">
+                                        <div class="chem-progress-track">
+                                            <div
+                                                class="chem-progress-fill"
+                                                id="chem-learn-progress"
+                                            ></div>
+                                        </div>
+                                        <div class="chem-canvas-wrap">
+                                            <canvas
+                                                id="chem-learn-canvas"
+                                            ></canvas>
+                                        </div>
+                                        <div
+                                            class="chem-compound-name"
+                                            id="chem-learn-name"
+                                        >
+                                            -
+                                        </div>
+                                        <div class="chem-compound-meta">
+                                            <span
+                                                ><span
+                                                    class="chem-meta-dot chem-dot-green"
+                                                ></span
+                                                ><span id="chem-learn-correct"
+                                                    >0</span
+                                                >
+                                                correct</span
+                                            >
+                                            <span
+                                                ><span
+                                                    class="chem-meta-dot chem-dot-red"
+                                                ></span
+                                                ><span id="chem-learn-wrong"
+                                                    >0</span
+                                                >
+                                                wrong</span
+                                            >
+                                            <span
+                                                ><span
+                                                    class="chem-meta-dot chem-dot-amber"
+                                                ></span
+                                                ><span id="chem-learn-streak"
+                                                    >0</span
+                                                >
+                                                streak</span
+                                            >
+                                        </div>
+                                    </div>
+                                    <div class="chem-learn-nav">
+                                        <button
+                                            class="chem-btn chem-btn-secondary"
+                                            onclick="chemChangeLearn(-1)"
+                                        >
+                                            Prev
+                                        </button>
+                                        <div
+                                            class="chem-nav-counter"
+                                            id="chem-learn-index-text"
+                                        >
+                                            0 / 0
+                                        </div>
+                                        <button
+                                            class="chem-btn chem-btn-primary"
+                                            onclick="chemChangeLearn(1)"
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                    <button
+                                        class="chem-btn chem-btn-ghost chem-wide-btn"
+                                        onclick="chemGoHome()"
+                                    >
+                                        Back to Menu
+                                    </button>
+                                </div>
+
+                                <div id="chem-view-practice" class="chem-view">
+                                    <div class="chem-panel">
+                                        <div class="chem-canvas-wrap">
+                                            <canvas
+                                                id="chem-practice-canvas"
+                                            ></canvas>
+                                        </div>
+                                        <div
+                                            class="chem-question-hint"
+                                            id="chem-practice-hint"
+                                        >
+                                            Identify the compound
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="chem-options-grid"
+                                        id="chem-practice-options"
+                                    ></div>
+                                    <button
+                                        class="chem-btn chem-btn-ghost chem-wide-btn"
+                                        onclick="chemGoHome()"
+                                    >
+                                        End Practice
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SETTINGS -->
+                    <div class="page" id="page-settings">
+                        <div class="full-card">
+                            <div class="card-header">
+                                <div class="card-title">Theme Settings</div>
+                                <div
+                                    style="font-size: 12px; color: var(--text3)"
+                                >
+                                    Customize your portal look
+                                </div>
+                            </div>
+                            <div class="theme-mode-row">
+                                <button
+                                    class="theme-mode-btn"
+                                    id="theme-mode-dark"
+                                    onclick="setThemeMode('dark')"
+                                >
+                                    Dark Mode
+                                </button>
+                                <button
+                                    class="theme-mode-btn"
+                                    id="theme-mode-light"
+                                    onclick="setThemeMode('light')"
+                                >
+                                    Light Mode
+                                </button>
+                            </div>
+                            <div
+                                id="theme-preset-grid"
+                                class="theme-preset-grid"
+                            ></div>
+                            <div class="settings-actions">
+                                <button
+                                    class="theme-mode-btn"
+                                    onclick="resetAppearance()"
+                                >
+                                    Reset Appearance
+                                </button>
+                                <button
+                                    class="theme-mode-btn"
+                                    onclick="clearLocalCache()"
+                                >
+                                    Clear Local Cache
+                                </button>
+                                <button
+                                    class="theme-mode-btn"
+                                    onclick="syncCloudProgress()"
+                                >
+                                    Sync Cloud
+                                </button>
+                                <button
+                                    class="theme-mode-btn"
+                                    onclick="hardRefreshAndClearCache()"
+                                >
+                                    Hard Refresh
+                                </button>
+                                <button
+                                    class="theme-mode-btn"
+                                    onclick="refreshCurrentSection()"
+                                >
+                                    Refresh Current Section
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="full-card" style="margin-top: 16px">
+                            <div class="card-header">
+                                <div class="card-title">Practice Settings</div>
+                                <div
+                                    style="font-size: 12px; color: var(--text3)"
+                                >
+                                    Configure chemistry practice modes
+                                </div>
+                            </div>
+                            <div
+                                style="
+                                    margin-top: 12px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: space-between;
+                                    gap: 12px;
+                                    padding: 12px 14px;
+                                    background: var(--bg3);
+                                    border: 1px solid var(--border);
+                                    border-radius: 10px;
+                                "
+                            >
+                                <div>
+                                    <div
+                                        style="
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                            color: var(--text);
+                                        "
+                                    >
+                                        Enable Mastered Text Questions
+                                    </div>
+                                    <div
+                                        style="
+                                            font-size: 11px;
+                                            color: var(--text3);
+                                            margin-top: 2px;
+                                        "
+                                    >
+                                        Allow 20% chance of free-text questions
+                                        from mastered compounds. If disabled,
+                                        only MCQ options are shown.
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <input
+                                        type="checkbox"
+                                        id="chem-setting-text-mode"
+                                        checked
+                                        onchange="chemToggleTextMode(this)"
+                                    />
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <div
+                                style="
+                                    margin-top: 12px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: space-between;
+                                    gap: 12px;
+                                    padding: 12px 14px;
+                                    background: var(--bg3);
+                                    border: 1px solid var(--border);
+                                    border-radius: 10px;
+                                "
+                            >
+                                <div>
+                                    <div
+                                        style="
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                            color: var(--text);
+                                        "
+                                    >
+                                        wizard type shi
+                                    </div>
+                                    <div
+                                        style="
+                                            font-size: 11px;
+                                            color: var(--text3);
+                                            margin-top: 2px;
+                                        "
+                                    >
+                                        Shows name, draw on paper, then
+                                        self-verify structure. Shows each
+                                        compound once per run.
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <input
+                                        type="checkbox"
+                                        id="chem-setting-wizard-mode"
+                                        onchange="chemToggleWizardMode(this)"
+                                    />
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <div
+                                style="
+                                    margin-top: 12px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: space-between;
+                                    gap: 12px;
+                                    padding: 12px 14px;
+                                    background: var(--bg3);
+                                    border: 1px solid var(--border);
+                                    border-radius: 10px;
+                                "
+                            >
+                                <div>
+                                    <div
+                                        style="
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                            color: var(--text);
+                                        "
+                                    >
+                                        Molecular Renderer
+                                    </div>
+                                    <div
+                                        style="
+                                            font-size: 11px;
+                                            color: var(--text3);
+                                            margin-top: 2px;
+                                        "
+                                    >
+                                        Select structure rendering library.
+                                        RDKit JS is loaded dynamically.
+                                    </div>
+                                </div>
+                                <select
+                                    id="chem-setting-renderer"
+                                    style="
+                                        min-width: 130px;
+                                        background: var(--bg2);
+                                        color: var(--text);
+                                        border: 1px solid var(--border);
+                                        border-radius: 6px;
+                                        padding: 6px 10px;
+                                        font-family:
+                                            &quot;DM Sans&quot;, sans-serif;
+                                        font-size: 12px;
+                                        font-weight: 600;
+                                        outline: none;
+                                        cursor: pointer;
+                                    "
+                                    onchange="chemChangeRenderer(this.value)"
+                                >
+                                    <option value="smiles">
+                                        Smiles Drawer
+                                    </option>
+                                    <option value="rdkit">RDKit JS</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="mobile-dock" aria-label="Mobile Navigation">
+            <button
+                class="dock-btn active"
+                data-page="dashboard"
+                onclick="
+                    nav(
+                        'dashboard',
+                        document.querySelector('.nav-item[onclick*=dashboard]'),
+                    )
+                "
+            >
+                <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                >
+                    <rect x="1" y="1" width="6" height="6" rx="1.5" />
+                    <rect x="9" y="1" width="6" height="6" rx="1.5" />
+                    <rect x="1" y="9" width="6" height="6" rx="1.5" />
+                    <rect x="9" y="9" width="6" height="6" rx="1.5" />
+                </svg>
+                <span>Home</span>
+            </button>
+            <button
+                class="dock-btn"
+                data-page="courses"
+                onclick="
+                    nav(
+                        'courses',
+                        document.querySelector('.nav-item[onclick*=courses]'),
+                    )
+                "
+            >
+                <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                >
+                    <path d="M2 4h12M2 8h8M2 12h10" />
+                </svg>
+                <span>Courses</span>
+            </button>
+            <button
+                class="dock-btn"
+                data-page="messages"
+                onclick="
+                    nav(
+                        'messages',
+                        document.querySelector('.nav-item[onclick*=messages]'),
+                    )
+                "
+            >
+                <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                >
+                    <path
+                        d="M14 2H2a1 1 0 00-1 1v8a1 1 0 001 1h3l3 2 3-2h3a1 1 0 001-1V3a1 1 0 00-1-1z"
+                    />
+                </svg>
+                <span>Messages</span>
+            </button>
+            <button
+                class="dock-btn"
+                data-page="timetable"
+                onclick="
+                    nav(
+                        'timetable',
+                        document.querySelector('.nav-item[onclick*=timetable]'),
+                    )
+                "
+            >
+                <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                >
+                    <rect x="1" y="2" width="14" height="13" rx="1.5" />
+                    <path d="M5 1v3M11 1v3M1 7h14" />
+                </svg>
+                <span>Classes</span>
+            </button>
+            <button class="dock-btn" data-page="more" onclick="toggleSidebar()">
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <circle cx="5" cy="12" r="1.8" />
+                    <circle cx="12" cy="12" r="1.8" />
+                    <circle cx="19" cy="12" r="1.8" />
+                </svg>
+                <span>More</span>
+            </button>
+        </nav>
+
+        <div
+            class="command-palette-backdrop"
+            id="command-palette-backdrop"
+            onclick="closeCommandPalette(event)"
+        >
+            <div class="command-palette" onclick="event.stopPropagation()">
+                <div class="command-header">
+                    <input
+                        id="command-input"
+                        class="command-input"
+                        placeholder="Type a command or page name..."
+                    />
+                    <div class="command-shortcut">Esc</div>
+                </div>
+                <div class="command-list" id="command-list"></div>
+            </div>
+        </div>
+
+        <div
+            class="chem-stats-sheet"
+            id="chem-stats-sheet"
+            onclick="chemCloseStats(event)"
+        >
+            <div class="chem-stats-panel" onclick="event.stopPropagation()">
+                <div class="chem-stats-title" id="chem-stats-title">Stats</div>
+                <div id="chem-stats-list"></div>
+                <button
+                    class="chem-btn chem-btn-ghost chem-wide-btn"
+                    onclick="
+                        document
+                            .getElementById('chem-stats-sheet')
+                            .classList.remove('open')
+                    "
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+
+        <script src="https://unpkg.com/smiles-drawer@2.1.5/dist/smiles-drawer.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script src="https://cdn.jsdelivr.net/npm/jsencrypt/bin/jsencrypt.min.js"></script>
+        <script src="core.js"></script>
+        <script src="main.js"></script>
+        <script src="scraper.js"></script>
+        <!-- Cloudflare Pages Analytics -->
+        <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "b5028ea8d40949f0967580be4b4292c8"}'
+        ></script>
+        <!-- Cloudflare Pages Analytics --><!-- Cloudflare Pages Analytics -->
+        <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "b5028ea8d40949f0967580be4b4292c8"}'
+        ></script>
+        <!-- Cloudflare Pages Analytics --><!-- Cloudflare Pages Analytics -->
+        <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "b5028ea8d40949f0967580be4b4292c8"}'
+        ></script>
+        <!-- Cloudflare Pages Analytics --><!-- Cloudflare Pages Analytics -->
+        <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "b5028ea8d40949f0967580be4b4292c8"}'
+        ></script>
+        <!-- Cloudflare Pages Analytics -->
+    </body>
+</html>
