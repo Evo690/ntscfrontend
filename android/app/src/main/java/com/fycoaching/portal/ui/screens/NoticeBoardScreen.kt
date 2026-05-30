@@ -127,3 +127,37 @@ fun NoticeBoardScreen(
         }
     }
 }
+
+@Composable
+fun NoticeItemRow(notice: Notice) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(DarkSurface)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = notice.title ?: "Announcement",
+            color = TextPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = notice.createdDate ?: "Date Unknown",
+            color = TextTertiary,
+            fontSize = 11.sp
+        )
+        if (!notice.description.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = notice.description,
+                color = TextSecondary,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+

@@ -325,3 +325,10 @@ fun PracticeScreen(
         }
     }
 }
+
+data class Compound(
+    val name: String,
+    val smiles: String,
+    val tags: List<String>?
+)
+
