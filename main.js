@@ -565,6 +565,7 @@ function activeSubTab(pageId, fallback = 'all') {
     const leaderboardButton = (options.showLeaderboardButton || options.leaderboard)
       ? `<button class="start-btn gray" style="margin-top:0" onclick="openCurrentLeaderboard()">Leaderboard</button>`
       : '';
+    const downloadPdfButton = `<button class="start-btn" style="margin-top:0;background:var(--accent);color:#fff" onclick="downloadResultPdf('${escapeHtml(analysis?.testPaperId || selected?.id || selected?.testPaperId || '')}', ${Boolean(options.forced)}, this)">Download PDF</button>`;
     const forcedNotice = options.forced ? `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.28);border-radius:8px;color:var(--amber);font-size:12px">Forced result mode used: publish status was ignored and result analysis was fetched through examId.</div>` : '';
     const flags = [
       analysis?.isLiveTest ? 'Live test' : 'Offline result',
@@ -600,7 +601,7 @@ function activeSubTab(pageId, fallback = 'all') {
         <div class="result-metric"><div class="result-label">City Rank</div><div class="result-value">${escapeHtml(fmt(analysis?.cityRank))}</div></div>
       </div>
       <div class="result-section-title">Subject Breakdown</div>${subjectRows}
-      <div class="result-links">${leaderboardButton}${omrRow}${answerKeyRow}</div>${appearedRaw}${analysisRaw}`;
+      <div class="result-links">${downloadPdfButton}${leaderboardButton}${omrRow}${answerKeyRow}</div>${appearedRaw}${analysisRaw}`;
   }
   
   function buildLeaderboardHtml(analysis, leaderboard) {
@@ -779,7 +780,14 @@ function activeSubTab(pageId, fallback = 'all') {
   const PORTAL_CACHE_KEY = 'fy_portal_cache_v2';
   const PORTAL_CACHE_TTL_MS = 15 * 60 * 1000;
   const PORTAL_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
-  
+  function debounce(fn, delay) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+
   function formatRelativeTime(ts) {
     const deltaSec = Math.max(0, Math.floor((Date.now() - Number(ts || 0)) / 1000));
     if (deltaSec < 10) return 'just now';
@@ -966,8 +974,12 @@ function activeSubTab(pageId, fallback = 'all') {
     if (activePage === 'examcal') renderExamCalendar(APP_STATE.calendarEntries || []);
     if (activePage === 'notices') renderNotices(APP_STATE.notices || []);
     if (activePage === 'study') renderStudyContent(APP_STATE.studyContent || [], APP_STATE.studyTotal || 0);
-    if (activePage === 'practice') chemInitApp();
-    if (activePage === 'settings') renderThemeSettings();
+    if (activePage === 'practice') { chemInitApp(); showModeSelection(); }
+    if (activePage === 'settings') {
+      renderThemeSettings();
+      renderListEditor();
+    }
+
   }
   
   async function ensureDashboardData(force = false) {
@@ -1227,6 +1239,7 @@ function activeSubTab(pageId, fallback = 'all') {
       chemEnsureSupabase();
       await chemDownloadProgress(true);
       setSyncPill(navigator.onLine ? 'live' : 'offline', navigator.onLine ? 'Live' : 'Offline');
+      showModeSelection();
     }
 
     const activePageEl = document.querySelector('.page.active');
@@ -1428,6 +1441,213 @@ function activeSubTab(pageId, fallback = 'all') {
       </button>
     `).join('');
   }
+
+  let chemListEditorTab = 'compounds';
+  let chemListEditorSearch = '';
+
+  async function renderListEditor() {
+    await Promise.all([chemInitApp(), reagentInitApp()]);
+
+    const root = document.getElementById('list-editor-root');
+    if (!root) return;
+
+    root.innerHTML = `
+      <style>
+        #list-editor-items::-webkit-scrollbar {
+          width: 6px;
+        }
+        #list-editor-items::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        #list-editor-items::-webkit-scrollbar-thumb {
+          background: var(--border);
+          border-radius: 3px;
+        }
+        #list-editor-items::-webkit-scrollbar-thumb:hover {
+          background: var(--text3);
+        }
+      </style>
+      <div class="list-editor-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap: 10px; flex-wrap: wrap;">
+        <div class="chem-board-tabs" style="margin:0;">
+          <button class="chem-tab-btn ${chemListEditorTab === 'compounds' ? 'active' : ''}" id="list-editor-tab-compounds" onclick="setListEditorTab('compounds')">
+            Compounds (${chemMyData.myList.length}/${chemAllCompounds.length})
+          </button>
+          <button class="chem-tab-btn ${chemListEditorTab === 'reagents' ? 'active' : ''}" id="list-editor-tab-reagents" onclick="setListEditorTab('reagents')">
+            Reagents (${reagentMyData.myList.length}/${reagentAllReagents.length})
+          </button>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="chem-btn chem-btn-ghost" style="min-height:30px; font-size:12px; padding:4px 10px;" onclick="listEditorSelectAll(true)">Select All</button>
+          <button class="chem-btn chem-btn-ghost" style="min-height:30px; font-size:12px; padding:4px 10px;" onclick="listEditorSelectAll(false)">Deselect All</button>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <input type="text" id="list-editor-search" placeholder="Search ${chemListEditorTab === 'compounds' ? 'compounds...' : 'reagents...'}" 
+          style="width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg3); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color 0.2s;" 
+          value="${escapeHtml(chemListEditorSearch)}" oninput="handleListEditorSearch(this.value)" />
+      </div>
+      <div id="list-editor-items" style="max-height: 250px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg2);">
+      </div>
+    `;
+
+    renderListEditorItems();
+  }
+
+  function renderListEditorItems() {
+    const container = document.getElementById('list-editor-items');
+    if (!container) return;
+
+    const searchLower = chemListEditorSearch.toLowerCase().trim();
+
+    if (chemListEditorTab === 'compounds') {
+      const filtered = chemAllCompounds.filter(c => 
+        c.name.toLowerCase().includes(searchLower) || 
+        (c.smiles && c.smiles.toLowerCase().includes(searchLower))
+      );
+
+      if (!filtered.length) {
+        container.innerHTML = `<div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: var(--text3); font-size: 13px;">No compounds found.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(c => {
+        const isChecked = chemMyData.myList.includes(c.name);
+        return `
+          <label style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.2s; user-select: none;">
+            <input type="checkbox" style="cursor: pointer; accent-color: var(--accent);" ${isChecked ? 'checked' : ''} onchange="toggleListEditorCompound('${escapeHtml(c.name)}', this.checked)" />
+            <div style="font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>
+          </label>
+        `;
+      }).join('');
+    } else {
+      const filtered = reagentAllReagents.filter(r => 
+        r.toLowerCase().includes(searchLower)
+      );
+
+      if (!filtered.length) {
+        container.innerHTML = `<div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: var(--text3); font-size: 13px;">No reagents found.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(r => {
+        const isChecked = reagentMyData.myList.includes(r);
+        return `
+          <label style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.2s; user-select: none;">
+            <input type="checkbox" style="cursor: pointer; accent-color: var(--accent);" ${isChecked ? 'checked' : ''} onchange="toggleListEditorReagent('${escapeHtml(r)}', this.checked)" />
+            <div style="font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(r)}">${escapeHtml(r)}</div>
+          </label>
+        `;
+      }).join('');
+    }
+  }
+
+  window.setListEditorTab = function(tab) {
+    chemListEditorTab = tab;
+    renderListEditor();
+  };
+
+  window.handleListEditorSearch = function(val) {
+    chemListEditorSearch = val;
+    renderListEditorItems();
+  };
+
+  window.toggleListEditorCompound = function(name, isChecked) {
+    if (isChecked) {
+      if (!chemMyData.myList.includes(name)) {
+        chemMyData.myList.push(name);
+        if (!chemMyData.stats[name]) {
+          chemMyData.stats[name] = { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+        }
+      }
+    } else {
+      chemMyData.myList = chemMyData.myList.filter(n => n !== name);
+    }
+    chemSave();
+    chemSyncAll(false);
+    
+    const tabBtn = document.getElementById('list-editor-tab-compounds');
+    if (tabBtn) {
+      tabBtn.textContent = `Compounds (${chemMyData.myList.length}/${chemAllCompounds.length})`;
+    }
+  };
+
+  window.toggleListEditorReagent = function(name, isChecked) {
+    if (isChecked) {
+      if (!reagentMyData.myList.includes(name)) {
+        reagentMyData.myList.push(name);
+        
+        const newReactions = reagentAllReactions.filter(r => r.Reagent === name);
+        newReactions.forEach(r => {
+          const key = `${r.Reactant} | ${r.Reagent} | ${r.Product}`;
+          if (!reagentMyData.stats[key]) {
+            reagentMyData.stats[key] = { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+          }
+        });
+      }
+    } else {
+      reagentMyData.myList = reagentMyData.myList.filter(r => r !== name);
+    }
+    reagentSave();
+    chemSave();
+    chemSyncAll(false);
+
+    const tabBtn = document.getElementById('list-editor-tab-reagents');
+    if (tabBtn) {
+      tabBtn.textContent = `Reagents (${reagentMyData.myList.length}/${reagentAllReagents.length})`;
+    }
+  };
+
+  window.listEditorSelectAll = function(selectAll) {
+    const searchLower = chemListEditorSearch.toLowerCase().trim();
+    if (chemListEditorTab === 'compounds') {
+      const filtered = chemAllCompounds.filter(c => 
+        c.name.toLowerCase().includes(searchLower) || 
+        (c.smiles && c.smiles.toLowerCase().includes(searchLower))
+      );
+
+      filtered.forEach(c => {
+        if (selectAll) {
+          if (!chemMyData.myList.includes(c.name)) {
+            chemMyData.myList.push(c.name);
+            if (!chemMyData.stats[c.name]) {
+              chemMyData.stats[c.name] = { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+            }
+          }
+        } else {
+          chemMyData.myList = chemMyData.myList.filter(n => n !== c.name);
+        }
+      });
+      chemSave();
+      chemSyncAll(false);
+    } else {
+      const filtered = reagentAllReagents.filter(r => 
+        r.toLowerCase().includes(searchLower)
+      );
+
+      filtered.forEach(r => {
+        if (selectAll) {
+          if (!reagentMyData.myList.includes(r)) {
+            reagentMyData.myList.push(r);
+            
+            const newReactions = reagentAllReactions.filter(x => x.Reagent === r);
+            newReactions.forEach(x => {
+              const key = `${x.Reactant} | ${x.Reagent} | ${x.Product}`;
+              if (!reagentMyData.stats[key]) {
+                reagentMyData.stats[key] = { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+              }
+            });
+          }
+        } else {
+          reagentMyData.myList = reagentMyData.myList.filter(x => x !== r);
+        }
+      });
+      reagentSave();
+      chemSave();
+      chemSyncAll(false);
+    }
+
+    renderListEditor();
+  };
   
   window.chemToggleTextMode = function(el) {
     localStorage.setItem('chem_setting_text_mode', el.checked ? 'true' : 'false');
@@ -1499,10 +1719,10 @@ function activeSubTab(pageId, fallback = 'all') {
     const searchInput = document.getElementById('global-search');
     if (searchInput) {
       searchInput.value = APP_STATE.globalSearch || '';
-      searchInput.addEventListener('input', function onSearchInput() {
+      searchInput.addEventListener('input', debounce(function onSearchInput() {
         APP_STATE.globalSearch = this.value.trim();
         refreshActivePageData();
-      });
+      }, 150));
     }
   
     const commandInput = document.getElementById('command-input');
@@ -1770,6 +1990,708 @@ function activeSubTab(pageId, fallback = 'all') {
     return found;
   };
   
+  window.downloadResultPdf = async function downloadResultPdf(testId, isForced, buttonEl) {
+    const cleanId = String(testId || '').trim();
+    if (!cleanId || !API_CONFIG.token) {
+      alert('Authentication token or test ID not found. Please log in.');
+      return;
+    }
+
+    let originalHtml = '';
+    if (buttonEl) {
+      originalHtml = buttonEl.innerHTML;
+      buttonEl.disabled = true;
+      buttonEl.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.2);border-radius:50%;border-top-color:#fff;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:6px"></span>Loading...';
+    }
+
+    // Open print window synchronously to avoid popup blocker
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Loading Academic Report...</title>
+          <style>
+            body {
+              background: #05070b;
+              color: #ffffff;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+            }
+            .loader {
+              text-align: center;
+            }
+            .spinner {
+              border: 3px solid rgba(255,255,255,0.1);
+              width: 36px;
+              height: 36px;
+              border-radius: 50%;
+              border-left-color: #10b981;
+              animation: spin 1s linear infinite;
+              margin: 0 auto 16px auto;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            .text {
+              font-size: 14px;
+              font-weight: 500;
+              color: #9ca3af;
+              letter-spacing: 0.05em;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="loader">
+            <div class="spinner"></div>
+            <div class="text">PREPARING REPORT PDF...</div>
+          </div>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+
+    try {
+      const allTests = [...(APP_STATE.tests || []), ...(APP_STATE.eraTests || [])];
+      const selected = allTests.find(t => String(t.id || '') === cleanId || String(t.testPaperId || '') === cleanId) || null;
+      const appearedReqId = selected?.id || cleanId;
+      
+      let appeared = selected?.appeared || null;
+      if (!appeared) {
+        appeared = await fetchAppearedResult(API_CONFIG.token, appearedReqId);
+      }
+
+      const examId = appeared?.examId;
+      if (!examId) {
+        throw new Error('No exam ID found for this test.');
+      }
+
+      const key = `${isForced ? 'era:' : ''}${examId}`;
+      let analysis = APP_STATE.resultCache[key];
+      if (!analysis) {
+        analysis = await fetchResultAnalysis(API_CONFIG.token, examId);
+        if (analysis) APP_STATE.resultCache[key] = analysis;
+      }
+
+      if (!analysis || !analysis.result) {
+        throw new Error('Result analysis data is not available.');
+      }
+
+      const leaderboardId = selected?.id || cleanId || selected?.testPaperId || analysis?.testPaperId;
+      let leaderboard = null;
+      if (leaderboardId) {
+        leaderboard = await fetchLeaderboardScore(API_CONFIG.token, leaderboardId);
+      }
+
+      const studentName = sessionStorage.getItem('fy_user_name') || 'Student';
+      const testName = analysis.testName || selected?.testName || selected?.name || 'Exam';
+      const attemptDate = formatDateLabel(analysis.attemptDate || selected?.examDate || selected?.testDate || '');
+      const testPaperIdStr = analysis.testPaperId || cleanId;
+      const totalStudents = analysis.totalStudent || '-';
+
+      const r = analysis.result;
+      const fmt = v => (v === null || v === undefined || v === '') ? '-' : v;
+      const topTotal = Array.isArray(r.topScoreTotal) && r.topScoreTotal.length ? r.topScoreTotal.join(', ') : '-';
+      const performanceMap = new Map((analysis.subjectPerformance || []).map(p => [String(p.subjectName || '').toLowerCase(), p.performance]));
+      
+      const topBySubject = {};
+      if (Array.isArray(r.topScoreSubjectData)) {
+        r.topScoreSubjectData.forEach(item => {
+          const key = String(item.subjectId ?? '');
+          if (!topBySubject[key]) topBySubject[key] = [];
+          topBySubject[key].push(item.totalMarks);
+        });
+      }
+
+      // Calculate subjects breakdown html
+      let tableRowsHtml = '';
+      if (Array.isArray(r.subjectData) && r.subjectData.length) {
+        tableRowsHtml = r.subjectData.map(s => {
+          const correct = Number(s.totalCorrect ?? 0);
+          const incorrect = Number(s.totalInCorrect ?? s.totalIncorrect ?? 0);
+          const unattempted = Number(s.totalUnAttempted ?? s.totalUnattempted ?? 0);
+          const attempted = Number(s.totalAttempted ?? (correct + incorrect));
+          const subjectTopScores = topBySubject[String(s.subjectId ?? '')]?.join(', ') || '-';
+          const performance = performanceMap.get(String(s.subjectName || '').toLowerCase()) || '-';
+          
+          return `
+            <tr>
+              <td style="font-weight: 700; color: #0f172a;">${escapeHtml(s.subjectName || 'Subject')}</td>
+              <td class="mono font-semibold" style="color: #059669;">${escapeHtml(fmt(s.totalMarks))}/${escapeHtml(fmt(s.totalSubjectMarks))}</td>
+              <td class="mono">${escapeHtml(fmt(s.totalAvgMarks))}</td>
+              <td class="mono">${escapeHtml(fmt(s.highestMarks))}</td>
+              <td class="mono">${escapeHtml(fmt(s.rank))}</td>
+              <td class="mono">${escapeHtml(fmt(s.percentile))}</td>
+              <td>
+                <div class="score-breakdown-row font-medium">
+                  <span class="c">${correct}c</span>
+                  <span style="color: #cbd5e1;">/</span>
+                  <span class="w">${incorrect}w</span>
+                  <span style="color: #cbd5e1;">/</span>
+                  <span class="u">${unattempted}u</span>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        tableRowsHtml = `<tr><td colspan="7" style="text-align: center; color: #64748b;">No subject breakdown available</td></tr>`;
+      }
+
+      // Check performance compared to average
+      const isAboveAvg = Number(r.totalMarks) >= Number(r.totalAvg);
+      const diffFromAvg = (Number(r.totalMarks) - Number(r.totalAvg)).toFixed(2);
+      const performanceInsight = isAboveAvg 
+        ? `<div class="insight-badge badge-success">✓ You scored ${diffFromAvg} marks above the class average. Prediction confidence is high.</div>`
+        : `<div class="insight-badge badge-warning">⚠ Score is at or below class average. Treat prediction with caution.</div>`;
+
+      // Leaderboard Top 5 if available
+      let leaderboardHtml = '';
+      if (leaderboard && Array.isArray(leaderboard.leaderboardScore) && leaderboard.leaderboardScore.length) {
+        const top5 = leaderboard.leaderboardScore.slice(0, 5);
+        const top5Rows = top5.map((entry, index) => {
+          return `
+            <div class="leaderboard-entry">
+              <div class="lead-rank">${index + 1}</div>
+              <div class="lead-name">${escapeHtml(entry.studentName || 'Student')}</div>
+              <div class="lead-score mono">${escapeHtml(entry.totalMarks)}</div>
+            </div>
+          `;
+        }).join('');
+        leaderboardHtml = `
+          <div style="margin-top: 30px;">
+            <h2 class="section-title">Class Top Performers</h2>
+            <div class="leaderboard-card">
+              ${top5Rows}
+            </div>
+          </div>
+        `;
+      }
+
+      const reportHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Performance Report - ${escapeHtml(testName)}</title>
+          <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+          <style>
+            :root {
+              --primary: #0f172a;
+              --accent: #10b981; /* emerald green */
+              --accent-light: #ecfdf5;
+              --border: #e2e8f0;
+              --bg-light: #f8fafc;
+              --text-main: #334155;
+              --text-dark: #0f172a;
+              --text-muted: #64748b;
+            }
+
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+            }
+
+            body {
+              font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              color: var(--text-main);
+              background: #ffffff;
+              line-height: 1.5;
+              padding: 30px;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            @page {
+              size: A4;
+              margin: 15mm;
+            }
+
+            .report {
+              max-width: 800px;
+              margin: 0 auto;
+            }
+
+            /* Header Section */
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 2px solid var(--accent);
+              padding-bottom: 16px;
+              margin-bottom: 24px;
+            }
+
+            .logo-section {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+            }
+
+            .logo-icon {
+              width: 38px;
+              height: 38px;
+              background: var(--accent);
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: 700;
+              font-size: 20px;
+              font-family: 'Space Mono', monospace;
+            }
+
+            .logo-text h1 {
+              font-size: 18px;
+              font-weight: 700;
+              color: var(--text-dark);
+              letter-spacing: -0.02em;
+            }
+
+            .logo-text p {
+              font-size: 10px;
+              color: var(--text-muted);
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+
+            .badge {
+              background: var(--accent-light);
+              color: #065f46;
+              font-size: 11px;
+              font-weight: 700;
+              padding: 6px 12px;
+              border-radius: 20px;
+              text-transform: uppercase;
+              letter-spacing: 0.03em;
+            }
+
+            /* Profile Card & Info Grid */
+            .info-grid {
+              display: grid;
+              grid-template-columns: 1.8fr 1fr;
+              gap: 16px;
+              margin-bottom: 24px;
+            }
+
+            .student-card {
+              background: var(--primary);
+              color: white;
+              padding: 20px;
+              border-radius: 12px;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+            }
+
+            .student-card h2 {
+              font-size: 20px;
+              font-weight: 700;
+              margin-bottom: 4px;
+              color: white;
+            }
+
+            .student-card p {
+              font-size: 12px;
+              color: #94a3b8;
+            }
+
+            .exam-card {
+              background: var(--bg-light);
+              border: 1px solid var(--border);
+              padding: 20px;
+              border-radius: 12px;
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 12px;
+            }
+
+            .info-item {
+              display: flex;
+              flex-direction: column;
+            }
+
+            .info-label {
+              font-size: 10px;
+              font-weight: 700;
+              color: var(--text-muted);
+              text-transform: uppercase;
+              letter-spacing: 0.02em;
+              margin-bottom: 2px;
+            }
+
+            .info-val {
+              font-size: 13px;
+              font-weight: 700;
+              color: var(--text-dark);
+            }
+
+            /* Metrics Summary Cards */
+            .metrics-row {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 12px;
+              margin-bottom: 24px;
+            }
+
+            .metric-card {
+              background: var(--bg-light);
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              padding: 16px;
+              text-align: center;
+            }
+
+            .metric-card.accent-card {
+              border-color: var(--accent);
+              background: var(--accent-light);
+            }
+
+            .metric-label {
+              font-size: 10px;
+              font-weight: 700;
+              color: var(--text-muted);
+              text-transform: uppercase;
+              margin-bottom: 6px;
+            }
+
+            .metric-val {
+              font-family: 'Space Mono', monospace;
+              font-size: 24px;
+              font-weight: 700;
+              color: var(--text-dark);
+              line-height: 1;
+            }
+
+            .accent-card .metric-val {
+              color: #047857;
+            }
+
+            .metric-sub {
+              font-size: 10px;
+              color: var(--text-muted);
+              margin-top: 6px;
+            }
+
+            /* Subject Breakdown Section */
+            .section-title {
+              font-size: 14px;
+              font-weight: 700;
+              color: var(--text-dark);
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              margin-bottom: 12px;
+              border-left: 3px solid var(--accent);
+              padding-left: 8px;
+            }
+
+            .table-container {
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              overflow: hidden;
+              margin-bottom: 24px;
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 12px;
+            }
+
+            th {
+              background: var(--bg-light);
+              font-weight: 700;
+              color: var(--text-muted);
+              text-align: left;
+              padding: 10px 14px;
+              border-bottom: 1px solid var(--border);
+              font-size: 10px;
+              text-transform: uppercase;
+            }
+
+            td {
+              padding: 10px 14px;
+              border-bottom: 1px solid var(--border);
+              color: var(--text-main);
+              vertical-align: middle;
+            }
+
+            tr:last-child td {
+              border-bottom: none;
+            }
+
+            .mono {
+              font-family: 'Space Mono', monospace;
+              font-size: 13px;
+            }
+
+            .font-semibold {
+              font-weight: 700;
+            }
+
+            .score-breakdown-row {
+              display: flex;
+              gap: 4px;
+              align-items: center;
+            }
+
+            .score-breakdown-row span {
+              font-size: 11px;
+            }
+
+            .score-breakdown-row .c { color: #059669; }
+            .score-breakdown-row .w { color: #dc2626; }
+            .score-breakdown-row .u { color: var(--text-muted); }
+
+            /* Insights / Leaderboard */
+            .insight-badge {
+              font-size: 12px;
+              font-weight: 500;
+              padding: 10px 14px;
+              border-radius: 8px;
+              margin-bottom: 20px;
+            }
+
+            .insight-badge.badge-success {
+              background: var(--accent-light);
+              color: #065f46;
+              border: 1px solid rgba(16,185,129,0.2);
+            }
+
+            .insight-badge.badge-warning {
+              background: #fffbeb;
+              color: #92400e;
+              border: 1px solid rgba(245,158,11,0.2);
+            }
+
+            .leaderboard-card {
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              background: var(--bg-light);
+              padding: 8px 16px;
+            }
+
+            .leaderboard-entry {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 8px 0;
+              border-bottom: 1px dashed var(--border);
+            }
+
+            .leaderboard-entry:last-child {
+              border-bottom: none;
+            }
+
+            .lead-rank {
+              width: 22px;
+              height: 22px;
+              border-radius: 50%;
+              background: #e2e8f0;
+              color: var(--text-dark);
+              font-size: 11px;
+              font-weight: 700;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-family: 'Space Mono', monospace;
+            }
+
+            .lead-name {
+              flex: 1;
+              margin-left: 12px;
+              font-size: 12px;
+              font-weight: 500;
+              color: var(--text-dark);
+            }
+
+            .lead-score {
+              font-weight: 700;
+              color: var(--accent);
+            }
+
+            /* Footer */
+            .footer {
+              border-top: 1px solid var(--border);
+              padding-top: 12px;
+              margin-top: 36px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 10px;
+              color: var(--text-muted);
+            }
+
+            .footer-right {
+              font-weight: 500;
+            }
+
+            @media print {
+              body {
+                padding: 0;
+                background: transparent;
+              }
+              .no-print {
+                display: none !important;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="report">
+            <!-- Header -->
+            <header class="header">
+              <div class="logo-section">
+                <div class="logo-icon">N</div>
+                <div class="logo-text">
+                  <h1>Narayana Talent</h1>
+                  <p>Academic Analytics Portal</p>
+                </div>
+              </div>
+              <div class="badge">Performance Report</div>
+            </header>
+
+            <!-- Profile & Exam Meta Grid -->
+            <section class="info-grid">
+              <div class="student-card">
+                <p class="info-label" style="color: #94a3b8;">STUDENT NAME</p>
+                <h2>${escapeHtml(studentName)}</h2>
+                <p>Narayana talent registered student profile analytics report.</p>
+              </div>
+              <div class="exam-card">
+                <div class="info-item">
+                  <span class="info-label">Exam Date</span>
+                  <span class="info-val">${escapeHtml(attemptDate)}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Paper ID</span>
+                  <span class="info-val">${escapeHtml(testPaperIdStr)}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Academic Year</span>
+                  <span class="info-val">${API_CONFIG.academicYear} - ${API_CONFIG.academicYear + 1}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Total Candidates</span>
+                  <span class="info-val">${escapeHtml(totalStudents)}</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Performance Insight -->
+            ${performanceInsight}
+
+            <!-- Overall Performance Metrics Row -->
+            <section class="metrics-row">
+              <div class="metric-card accent-card">
+                <div class="metric-label">Your Score</div>
+                <div class="metric-val">${escapeHtml(fmt(r.totalMarks))}</div>
+                <div class="metric-sub">Out of ${escapeHtml(fmt(r.totalSubjectMarks))}</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Rank</div>
+                <div class="metric-val">${escapeHtml(fmt(analysis.rank))}</div>
+                <div class="metric-sub">City Rank: ${escapeHtml(fmt(analysis.cityRank))}</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Batch Rank</div>
+                <div class="metric-val">${escapeHtml(fmt(analysis.batchRank))}</div>
+                <div class="metric-sub">Group Rank</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Percentile</div>
+                <div class="metric-val">${escapeHtml(fmt(analysis.percentile))}%</div>
+                <div class="metric-sub">Competency Index</div>
+              </div>
+            </section>
+
+            <!-- Subject-wise performance table -->
+            <section style="margin-top: 30px;">
+              <h2 class="section-title">Subject Breakdown</h2>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Subject</th>
+                      <th>Your Marks</th>
+                      <th>Class Avg</th>
+                      <th>Highest</th>
+                      <th>Rank</th>
+                      <th>Percentile</th>
+                      <th>Correct / Wrong / Unattempted</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tableRowsHtml}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- Extra stats (Toppers) -->
+            <section style="margin-top: 24px; display: grid; grid-template-columns: 1fr; gap: 16px;">
+              <div class="exam-card" style="grid-template-columns: 1fr; gap: 6px;">
+                <div class="info-item">
+                  <span class="info-label">Top Class Scores</span>
+                  <span class="info-val" style="font-family: 'Space Mono', monospace; font-size: 14px; color: #059669;">${escapeHtml(topTotal)}</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Leaderboard top 5 if loaded -->
+            ${leaderboardHtml}
+
+            <!-- Footer -->
+            <footer class="footer">
+              <div>Generated on ${new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true})}</div>
+              <div class="footer-right">Powered by Narayana Talent Portal</div>
+            </footer>
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 400);
+            };
+          </script>
+        </body>
+        </html>
+      `;
+
+      if (printWindow) {
+        printWindow.document.open();
+        printWindow.document.write(reportHtml);
+        printWindow.document.close();
+      }
+    } catch (err) {
+      console.error(err);
+      if (printWindow) {
+        printWindow.document.body.innerHTML = `
+          <div style="color:#ef4444;text-align:center;padding:40px;font-family:sans-serif;">
+            <h3 style="margin-bottom:8px">Failed to Generate Report</h3>
+            <p style="color:#6b7280;font-size:14px">${escapeHtml(err?.message || 'Unknown error occurred.')}</p>
+          </div>
+        `;
+      }
+    } finally {
+      if (buttonEl) {
+        buttonEl.disabled = false;
+        buttonEl.innerHTML = originalHtml;
+      }
+    }
+  };
+
+
+
   window.openCurrentLeaderboard = function openCurrentLeaderboard() {
     const body = document.getElementById('leaderboard-body');
     const current = APP_STATE.currentResult;
@@ -2179,6 +3101,7 @@ function activeSubTab(pageId, fallback = 'all') {
   }
   
   async function refreshPortalDataInBackground() {
+    if (document.visibilityState === 'hidden') return;
     if (!API_CONFIG.token) return;
     if (APP_STATE.isRefreshing) return;
     APP_STATE.isRefreshing = true;
@@ -2365,18 +3288,76 @@ function activeSubTab(pageId, fallback = 'all') {
   let chemAppReady = false;
   let chemSyncQueue = Promise.resolve();
 
-  let chemMyData = chemReadSavedData();
+  let chemCombinedData = chemLoadCombinedData();
+  let chemMyData = chemCombinedData.compounds;
+
+  function chemLoadCombinedData() {
+    try {
+      const stored = localStorage.getItem(CHEM_DATA_KEY);
+      if (!stored) {
+        return chemMigrateOrGetDefault();
+      }
+      const data = JSON.parse(stored);
+      if (data && data.compounds && data.reagents) {
+        return data;
+      }
+      return chemMigrateOldData(data);
+    } catch (_) {
+      return chemMigrateOrGetDefault();
+    }
+  }
+
+  function chemMigrateOrGetDefault() {
+    const defaultChem = { myList: [], stats: {}, dailyStats: {} };
+    const defaultReagents = { myList: [], stats: {} };
+    let oldChem = defaultChem;
+    let oldReagent = defaultReagents;
+    try {
+      const storedChem = localStorage.getItem(CHEM_DATA_KEY);
+      if (storedChem) oldChem = JSON.parse(storedChem) || defaultChem;
+    } catch (_) {}
+    try {
+      const storedReagent = localStorage.getItem('reagent_v1_data');
+      if (storedReagent) oldReagent = JSON.parse(storedReagent) || defaultReagents;
+    } catch (_) {}
+    return {
+      compounds: {
+        myList: (oldChem && Array.isArray(oldChem.myList)) ? oldChem.myList : [],
+        stats: (oldChem && oldChem.stats) ? oldChem.stats : {},
+        dailyStats: (oldChem && oldChem.dailyStats) ? oldChem.dailyStats : {}
+      },
+      reagents: {
+        myList: (oldReagent && Array.isArray(oldReagent.myList)) ? oldReagent.myList : [],
+        stats: (oldReagent && oldReagent.stats) ? oldReagent.stats : {}
+      }
+    };
+  }
+
+  function chemMigrateOldData(oldChemData) {
+    const defaultReagents = { myList: [], stats: {} };
+    let oldReagentData = defaultReagents;
+    try {
+      const storedReagent = localStorage.getItem('reagent_v1_data');
+      if (storedReagent) {
+        oldReagentData = JSON.parse(storedReagent) || defaultReagents;
+      }
+    } catch (_) {}
+
+    return {
+      compounds: {
+        myList: (oldChemData && Array.isArray(oldChemData.myList)) ? oldChemData.myList : [],
+        stats: (oldChemData && oldChemData.stats) ? oldChemData.stats : {},
+        dailyStats: (oldChemData && oldChemData.dailyStats) ? oldChemData.dailyStats : {}
+      },
+      reagents: {
+        myList: (oldReagentData && Array.isArray(oldReagentData.myList)) ? oldReagentData.myList : [],
+        stats: (oldReagentData && oldReagentData.stats) ? oldReagentData.stats : {}
+      }
+    };
+  }
 
   function chemReadSavedData() {
-    try {
-      return JSON.parse(localStorage.getItem(CHEM_DATA_KEY) || 'null') || {
-        myList: [],
-        stats: {},
-        dailyStats: {}
-      };
-    } catch (_) {
-      return { myList: [], stats: {}, dailyStats: {} };
-    }
+    return chemMyData;
   }
 
   function chemTodayKey() {
@@ -2403,15 +3384,50 @@ function activeSubTab(pageId, fallback = 'all') {
   }
 
   function chemNormalizeProgressData(source = {}) {
+    let compList = [];
+    let reagList = [];
+    let compStats = {};
+    let reagStats = {};
+
+    // Handle myList (which can be array or combined object)
+    if (source.myList) {
+      if (Array.isArray(source.myList)) {
+        compList = source.myList;
+      } else if (typeof source.myList === 'object') {
+        compList = Array.isArray(source.myList.compounds) ? source.myList.compounds : [];
+        reagList = Array.isArray(source.myList.reagents) ? source.myList.reagents : [];
+      }
+    }
+
+    // Handle stats (which can be old compound-only stats or combined object)
+    if (source.stats && typeof source.stats === 'object') {
+      if (source.stats.compounds || source.stats.reagents) {
+        compStats = (source.stats.compounds && typeof source.stats.compounds === 'object') ? source.stats.compounds : {};
+        reagStats = (source.stats.reagents && typeof source.stats.reagents === 'object') ? source.stats.reagents : {};
+      } else {
+        // Old format: all stats are compound stats
+        compStats = source.stats;
+      }
+    }
+
+    const dailyStats = source.dailyStats && typeof source.dailyStats === 'object' ? source.dailyStats : {};
+
     return {
-      myList: Array.isArray(source.myList) ? source.myList : [],
-      stats: source.stats && typeof source.stats === 'object' ? source.stats : {},
-      dailyStats: source.dailyStats && typeof source.dailyStats === 'object' ? source.dailyStats : {}
+      compounds: {
+        myList: compList,
+        stats: compStats,
+        dailyStats: dailyStats
+      },
+      reagents: {
+        myList: reagList,
+        stats: reagStats
+      }
     };
   }
 
   function chemProgressAttemptedTotal(source = {}) {
-    return Object.values(source.dailyStats || {}).reduce((total, stats) => {
+    const dailyStats = source.compounds?.dailyStats || source.dailyStats || {};
+    return Object.values(dailyStats).reduce((total, stats) => {
       return total + Number(stats?.attempted || 0);
     }, 0);
   }
@@ -2438,8 +3454,14 @@ function activeSubTab(pageId, fallback = 'all') {
     return {
       user_id: ntscName,
       username: ntscName,
-      my_list: chemMyData.myList || [],
-      compound_stats: chemMyData.stats || {},
+      my_list: {
+        compounds: chemMyData.myList || [],
+        reagents: reagentMyData.myList || []
+      },
+      compound_stats: {
+        compounds: chemMyData.stats || {},
+        reagents: reagentMyData.stats || {}
+      },
       daily_stats: chemMyData.dailyStats || {},
       updated_at: new Date().toISOString()
     };
@@ -2556,8 +3578,11 @@ function activeSubTab(pageId, fallback = 'all') {
 
   function chemSave() {
     chemEnsureDailyStats();
-    localStorage.setItem(CHEM_DATA_KEY, JSON.stringify(chemMyData));
+    chemCombinedData.compounds = chemMyData;
+    chemCombinedData.reagents = reagentMyData;
+    localStorage.setItem(CHEM_DATA_KEY, JSON.stringify(chemCombinedData));
     localStorage.setItem('chem_progress_updated_at', new Date().toISOString());
+    localStorage.setItem('reagent_v1_data', JSON.stringify(reagentMyData));
     chemUpdateDashboard();
   }
 
@@ -3261,7 +4286,7 @@ function activeSubTab(pageId, fallback = 'all') {
         } else {
           let shouldUpload = true;
           if (existing) {
-            const localProgress = chemNormalizeProgressData(chemMyData);
+            const localProgress = chemCombinedData;
             const cloudProgress = chemNormalizeProgressData({
               myList: existing.my_list,
               stats: existing.compound_stats,
@@ -3271,9 +4296,12 @@ function activeSubTab(pageId, fallback = 'all') {
             const cloudAttempted = chemProgressAttemptedTotal(cloudProgress);
 
             if (cloudAttempted > localAttempted) {
-              chemMyData = cloudProgress;
+              chemCombinedData = cloudProgress;
+              chemMyData = chemCombinedData.compounds;
+              reagentMyData = chemCombinedData.reagents;
               chemEnsureDailyStats();
-              localStorage.setItem(CHEM_DATA_KEY, JSON.stringify(chemMyData));
+              localStorage.setItem(CHEM_DATA_KEY, JSON.stringify(chemCombinedData));
+              localStorage.setItem('reagent_v1_data', JSON.stringify(reagentMyData));
               if (existing.updated_at) localStorage.setItem('chem_progress_updated_at', existing.updated_at);
               shouldUpload = false;
             }
@@ -3354,7 +4382,7 @@ function activeSubTab(pageId, fallback = 'all') {
     }
     if (!data) return false;
 
-    const localProgress = chemNormalizeProgressData(chemMyData);
+    const localProgress = chemCombinedData;
     const cloudProgress = chemNormalizeProgressData({
       myList: data.my_list,
       stats: data.compound_stats,
@@ -3364,9 +4392,12 @@ function activeSubTab(pageId, fallback = 'all') {
     const cloudAttempted = chemProgressAttemptedTotal(cloudProgress);
 
     if (cloudAttempted > localAttempted || force) {
-      chemMyData = cloudProgress;
+      chemCombinedData = cloudProgress;
+      chemMyData = chemCombinedData.compounds;
+      reagentMyData = chemCombinedData.reagents;
       chemEnsureDailyStats();
-      localStorage.setItem(CHEM_DATA_KEY, JSON.stringify(chemMyData));
+      localStorage.setItem(CHEM_DATA_KEY, JSON.stringify(chemCombinedData));
+      localStorage.setItem('reagent_v1_data', JSON.stringify(reagentMyData));
       if (data.updated_at) localStorage.setItem('chem_progress_updated_at', data.updated_at);
       else localStorage.setItem('chem_progress_updated_at', new Date().toISOString());
       return true;
@@ -3395,16 +4426,24 @@ function activeSubTab(pageId, fallback = 'all') {
 
   async function chemLoadLeaderboard(period = 'today') {
     const client = chemEnsureSupabase();
-    const list = document.getElementById('chem-leaderboard-list');
-    if (!list) return;
-    if (!client) {
-      list.innerHTML = '<div class="empty">Leaderboard unavailable (offline or connection blocked).</div>';
-      return;
-    }
+    const list = document.getElementById('chem-board-today') ? document.getElementById('chem-leaderboard-list') : null;
+    const reagentList = document.getElementById('reagent-leaderboard-list');
+    if (!list && !reagentList) return;
 
     document.getElementById('chem-board-today')?.classList.toggle('active', period === 'today');
     document.getElementById('chem-board-week')?.classList.toggle('active', period === 'week');
-    list.innerHTML = '<div class="empty">Loading leaderboard...</div>';
+    document.getElementById('reagent-board-today')?.classList.toggle('active', period === 'today');
+    document.getElementById('reagent-board-week')?.classList.toggle('active', period === 'week');
+
+    if (list) list.innerHTML = '<div class="empty">Loading leaderboard...</div>';
+    if (reagentList) reagentList.innerHTML = '<div class="empty">Loading leaderboard...</div>';
+
+    if (!client) {
+      const offlineMsg = '<div class="empty">Leaderboard unavailable (offline or connection blocked).</div>';
+      if (list) list.innerHTML = offlineMsg;
+      if (reagentList) reagentList.innerHTML = offlineMsg;
+      return;
+    }
 
     const startDate = period === 'week' ? chemRecentStartKey(7) : chemTodayKey();
     let query = client
@@ -3421,7 +4460,9 @@ function activeSubTab(pageId, fallback = 'all') {
 
     if (error) {
       console.error(error);
-      list.innerHTML = '<div class="empty">Could not load leaderboard.</div>';
+      const errMsg = '<div class="empty">Could not load leaderboard.</div>';
+      if (list) list.innerHTML = errMsg;
+      if (reagentList) reagentList.innerHTML = errMsg;
       return;
     }
 
@@ -3445,17 +4486,22 @@ function activeSubTab(pageId, fallback = 'all') {
     }, {})).sort((a, b) => (b.correct - a.correct) || (b.attempted - a.attempted)).slice(0, 30);
 
     if (!rows.length) {
-      list.innerHTML = `<div class="empty">No practice scores ${period === 'week' ? 'this week' : 'today'} yet.</div>`;
+      const emptyMsg = `<div class="empty">No practice scores ${period === 'week' ? 'this week' : 'today'} yet.</div>`;
+      if (list) list.innerHTML = emptyMsg;
+      if (reagentList) reagentList.innerHTML = emptyMsg;
       return;
     }
 
-    list.innerHTML = rows.map((row, i) => `
+    const html = rows.map((row, i) => `
       <div class="chem-board-row">
         <div class="chem-board-rank">#${i + 1}</div>
         <div class="chem-board-name">${escapeHtml(row.username || row.user_id || 'Student')}</div>
         <div class="chem-board-score">${Number(row.correct || 0)} C / ${Number(row.attempted || 0)} A</div>
       </div>
     `).join('');
+
+    if (list) list.innerHTML = html;
+    if (reagentList) reagentList.innerHTML = html;
   }
 
   function chemShowFlash(msg, isWrong) {
@@ -3472,7 +4518,7 @@ function activeSubTab(pageId, fallback = 'all') {
   }
 
   function chemExportData() {
-    const blob = new Blob([JSON.stringify(chemMyData, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(chemCombinedData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -3487,7 +4533,14 @@ function activeSubTab(pageId, fallback = 'all') {
     const reader = new FileReader();
     reader.onload = ev => {
       try {
-        chemMyData = JSON.parse(ev.target.result);
+        const imported = JSON.parse(ev.target.result);
+        if (imported && imported.compounds && imported.reagents) {
+          chemCombinedData = imported;
+        } else {
+          chemCombinedData = chemMigrateOldData(imported);
+        }
+        chemMyData = chemCombinedData.compounds;
+        reagentMyData = chemCombinedData.reagents;
         chemEnsureDailyStats();
         chemSave();
         chemSyncAll(false);
@@ -3524,6 +4577,526 @@ function activeSubTab(pageId, fallback = 'all') {
     }
   }
 
+  /* --- PRACTICE MODE SELECTION --- */
+  function showModeSelection() {
+    const selView = document.getElementById('chem-view-select-mode');
+    const chemContent = document.getElementById('chem-practice-content');
+    const reagentContent = document.getElementById('reagent-practice-content');
+    if (selView) selView.style.display = 'block';
+    if (chemContent) chemContent.style.display = 'none';
+    if (reagentContent) reagentContent.style.display = 'none';
+  }
+
+  function selectPracticeMode(mode) {
+    const selView = document.getElementById('chem-view-select-mode');
+    const chemContent = document.getElementById('chem-practice-content');
+    const reagentContent = document.getElementById('reagent-practice-content');
+    if (selView) selView.style.display = 'none';
+    
+    if (mode === 'common-names') {
+      if (chemContent) chemContent.style.display = 'block';
+      if (reagentContent) reagentContent.style.display = 'none';
+      chemInitApp();
+    } else if (mode === 'reagents') {
+      if (chemContent) chemContent.style.display = 'none';
+      if (reagentContent) reagentContent.style.display = 'block';
+      reagentInitApp();
+    }
+  }
+
+  /* --- REAGENTS LOGIC --- */
+  let reagentAllReactions = [];
+  let reagentAllReagents = [];
+  let reagentAllReactants = [];
+  let reagentAllProducts = [];
+  let reagentMyData = chemCombinedData.reagents;
+
+  // Learn State
+  let reagentLearnQueue = [];
+  let reagentLearnIdx = 0;
+
+  // Practice State
+  let reagentPracticeSessionCount = 0;
+  let reagentPracticeCorrectCount = 0;
+  let reagentLastPracticeKey = null;
+
+  let reagentAppReady = false;
+
+  function reagentReadSavedData() {
+    return reagentMyData;
+  }
+
+  async function reagentInitApp() {
+    if (reagentAppReady) {
+      reagentUpdateDashboard();
+      chemLoadLeaderboard(document.getElementById('reagent-board-week')?.classList.contains('active') ? 'week' : 'today');
+      return;
+    }
+    try {
+      const response = await fetch('re.json');
+      reagentAllReactions = await response.json();
+    } catch (e) {
+      console.error("Failed to initialize chemical reactions data", e);
+      chemShowToast("Error loading chemistry database.");
+      return;
+    }
+
+    // Extract unique sets from database
+    reagentAllReagents = [...new Set(reagentAllReactions.map(r => r.Reagent))];
+    reagentAllReactants = [...new Set(reagentAllReactions.map(r => r.Reactant))];
+    reagentAllProducts = [...new Set(reagentAllReactions.map(r => r.Product))];
+
+    // If user has no reagents added, add one to get them started
+    if (reagentMyData.myList.length === 0 && reagentAllReagents.length > 0) {
+      const defaultReagent = "NaBH4"; // A nice common one to start
+      const startReagent = reagentAllReagents.includes(defaultReagent) ? defaultReagent : reagentAllReagents[0];
+      reagentMyData.myList.push(startReagent);
+      
+      // Initialize stats
+      const startReactions = reagentAllReactions.filter(r => r.Reagent === startReagent);
+      startReactions.forEach(r => {
+        const key = `${r.Reactant} | ${r.Reagent} | ${r.Product}`;
+        reagentMyData.stats[key] = { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+      });
+      reagentSave();
+    }
+
+    // Sync database changes with local storage stats (in case JSON changed)
+    reagentAllReactions.forEach(r => {
+      const key = `${r.Reactant} | ${r.Reagent} | ${r.Product}`;
+      if (reagentMyData.myList.includes(r.Reagent) && !reagentMyData.stats[key]) {
+        reagentMyData.stats[key] = { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+      }
+    });
+
+    reagentAppReady = true;
+    reagentUpdateDashboard();
+    chemLoadLeaderboard('today');
+  }
+
+  function reagentUpdateDashboard() {
+    const totalReagents = reagentAllReagents.length;
+    const inList = reagentMyData.myList.length;
+    
+    const activeReactions = reagentAllReactions.filter(r => reagentMyData.myList.includes(r.Reagent));
+    const totalActiveReactions = activeReactions.length;
+    
+    const mastered = activeReactions.filter(r => {
+        const key = `${r.Reactant} | ${r.Reagent} | ${r.Product}`;
+        const s = reagentMyData.stats[key];
+        return s && s.streak >= 5;
+    }).length;
+
+    // Daily and 7-day attempts from shared chemMyData.dailyStats
+    const today = chemTodayKey();
+    const todayAttempts = chemMyData.dailyStats[today]?.attempted || 0;
+
+    let sevenDayAttempts = 0;
+    const recentStart = chemRecentStartKey(7);
+    if (chemMyData.dailyStats && typeof chemMyData.dailyStats === 'object') {
+      for (const [date, stats] of Object.entries(chemMyData.dailyStats)) {
+        if (date >= recentStart && stats) {
+          sevenDayAttempts += stats.attempted || 0;
+        }
+      }
+    }
+
+    const list = document.getElementById('reagent-stat-list');
+    const totalEl = document.getElementById('reagent-stat-total');
+    const masteredEl = document.getElementById('reagent-stat-mastered');
+    const todayEl = document.getElementById('reagent-stat-today-attempts');
+    const sevenDayEl = document.getElementById('reagent-stat-7day-attempts');
+
+    if (list) list.innerHTML = `Reagents: <strong>${inList} / ${totalReagents}</strong>`;
+    if (totalEl) totalEl.innerHTML = `Reactions: <strong>${totalActiveReactions}</strong>`;
+    if (masteredEl) masteredEl.innerHTML = `Mastered: <strong>${mastered}</strong>`;
+    if (todayEl) todayEl.innerHTML = `Today: <strong>${todayAttempts}</strong>`;
+    if (sevenDayEl) sevenDayEl.innerHTML = `7-Day: <strong>${sevenDayAttempts}</strong>`;
+  }
+
+  function reagentSave() {
+    chemCombinedData.compounds = chemMyData;
+    chemCombinedData.reagents = reagentMyData;
+    localStorage.setItem(CHEM_DATA_KEY, JSON.stringify(chemCombinedData));
+    localStorage.setItem('reagent_v1_data', JSON.stringify(reagentMyData));
+    reagentUpdateDashboard();
+  }
+
+  function reagentUpdateLearnEquation(reagent, reactant, product) {
+    const eqDiv = document.getElementById('reagent-learn-eq-container');
+    if (!eqDiv) return;
+    eqDiv.innerHTML = `
+      <div class="eq-row">
+        <div class="eq-block eq-reagent">${escapeHtml(reagent)}</div>
+        <div class="eq-operator">+</div>
+        <div class="eq-block eq-reactant">${escapeHtml(reactant)}</div>
+        <div class="eq-arrow">➔</div>
+        <div class="eq-block eq-product">${escapeHtml(product)}</div>
+      </div>
+    `;
+  }
+
+  function reagentUpdatePracticeEquation(reagent, reactant, product, hideReactant) {
+    const eqDiv = document.getElementById('reagent-practice-eq-container');
+    if (!eqDiv) return;
+    eqDiv.innerHTML = `
+      <div class="eq-row">
+        <div class="eq-block eq-reagent">${escapeHtml(reagent)}</div>
+        <div class="eq-operator">+</div>
+        <div class="eq-block ${hideReactant ? 'eq-hidden' : 'eq-reactant'}">${hideReactant ? '?' : escapeHtml(reactant)}</div>
+        <div class="eq-arrow">➔</div>
+        <div class="eq-block ${!hideReactant ? 'eq-hidden' : 'eq-product'}">${!hideReactant ? '?' : escapeHtml(product)}</div>
+      </div>
+    `;
+  }
+
+  function reagentBuildLearnQueue() {
+    const activeReactions = reagentAllReactions.filter(r => reagentMyData.myList.includes(r.Reagent));
+    const reactionKeys = activeReactions.map(r => `${r.Reactant} | ${r.Reagent} | ${r.Product}`);
+
+    // Compute priority weight for each reaction
+    const weighted = reactionKeys.map(key => {
+      const s = reagentMyData.stats[key] || { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+      const hrsSince = (Date.now() - (s.lastSeen || 0)) / 3600000;
+      const errorRatio = (s.wrong + 1) / (s.correct + 2);
+      const staleness = Math.min(hrsSince / 24, 3);
+      const streakPenalty = Math.max(0, 1 - s.streak * 0.1);
+
+      const weight = (errorRatio * 4) + (staleness * 2) + (streakPenalty) + (Math.random() * 1.5);
+      return { key, weight };
+    });
+
+    weighted.sort((a, b) => b.weight - a.weight);
+    return weighted.map(w => w.key);
+  }
+
+  function reagentInitLearn() {
+    if (reagentMyData.myList.length === 0) {
+      chemShowToast("Add reagents first!");
+      return;
+    }
+    reagentLearnQueue = reagentBuildLearnQueue();
+    if (reagentLearnQueue.length === 0) {
+      chemShowToast("No reactions found for active reagents.");
+      return;
+    }
+    reagentLearnIdx = 0;
+    reagentShowView('learn');
+    reagentUpdateLearnCard();
+  }
+
+  function reagentChangeLearn(dir) {
+    if (reagentLearnQueue.length === 0) return;
+    reagentLearnIdx += dir;
+    if (reagentLearnIdx >= reagentLearnQueue.length) reagentLearnIdx = 0;
+    if (reagentLearnIdx < 0) reagentLearnIdx = reagentLearnQueue.length - 1;
+    reagentUpdateLearnCard();
+  }
+
+  function reagentUpdateLearnCard() {
+    const key = reagentLearnQueue[reagentLearnIdx];
+    const [reactant, reagent, product] = key.split(' | ');
+    const stat = reagentMyData.stats[key] || { correct: 0, wrong: 0, streak: 0 };
+
+    document.getElementById('reagent-learn-name').innerText = reagent;
+    document.getElementById('reagent-learn-index-text').innerText = `${reagentLearnIdx + 1} / ${reagentLearnQueue.length}`;
+    document.getElementById('reagent-learn-correct').innerText = stat.correct;
+    document.getElementById('reagent-learn-wrong').innerText = stat.wrong;
+    document.getElementById('reagent-learn-streak').innerText = stat.streak;
+
+    const pct = ((reagentLearnIdx + 1) / reagentLearnQueue.length * 100).toFixed(1);
+    document.getElementById('reagent-learn-progress').style.width = pct + '%';
+
+    reagentUpdateLearnEquation(reagent, reactant, product);
+  }
+
+  function reagentSampleWeighted(keys) {
+    const scored = keys.map(key => {
+      const s = reagentMyData.stats[key] || { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+      const hrsSince = (Date.now() - (s.lastSeen || 0)) / 3600000;
+
+      const wrongPriority = s.wrong * 4;
+      const stalenessPriority = Math.min(hrsSince * 0.6, 12);
+      const streakBonus = -s.streak * 2;
+      const randomness = Math.random() * 8;
+
+      const weight = wrongPriority + stalenessPriority + streakBonus + randomness;
+      return { key, weight };
+    });
+
+    const totalWeight = scored.reduce((sum, s) => sum + Math.max(s.weight, 0.5), 0);
+    let rand = Math.random() * totalWeight;
+    for (const item of scored.sort((a, b) => b.weight - a.weight)) {
+      rand -= Math.max(item.weight, 0.5);
+      if (rand <= 0) return item.key;
+    }
+    return scored[0]?.key;
+  }
+
+  function reagentInitPractice() {
+    const activeReactions = reagentAllReactions.filter(r => reagentMyData.myList.includes(r.Reagent));
+    if (activeReactions.length === 0) {
+      chemShowToast("Add at least 1 reagent to practice.");
+      return;
+    }
+    reagentPracticeSessionCount = 0;
+    reagentPracticeCorrectCount = 0;
+    reagentLastPracticeKey = null;
+    reagentShowView('practice');
+    reagentNextQuestion();
+  }
+
+  function reagentNextQuestion() {
+    const activeReactions = reagentAllReactions.filter(r => reagentMyData.myList.includes(r.Reagent));
+    const activeKeys = activeReactions.map(r => `${r.Reactant} | ${r.Reagent} | ${r.Product}`);
+
+    // Exclude last shown to avoid immediate repeat
+    const eligible = activeKeys.filter(k => k !== reagentLastPracticeKey);
+    const targetKey = reagentSampleWeighted(eligible.length > 0 ? eligible : activeKeys);
+    reagentLastPracticeKey = targetKey;
+
+    const [reactant, reagent, product] = targetKey.split(' | ');
+
+    // Randomly hide reactant or product
+    const hideReactant = Math.random() < 0.5;
+
+    // Render equation with visual placeholder
+    reagentUpdatePracticeEquation(reagent, reactant, product, hideReactant);
+
+    const correctAnswer = hideReactant ? reactant : product;
+    let distractors = [];
+
+    if (hideReactant) {
+      // Hiding Reactant: distractors are other reactants.
+      const validReactants = reagentAllReactants.filter(r => 
+        r !== reactant && 
+        !reagentAllReactions.some(x => x.Reagent === reagent && x.Reactant === r && x.Product === product)
+      );
+      distractors = validReactants.sort(() => 0.5 - Math.random()).slice(0, 3);
+    } else {
+      // Hiding Product: distractors are other products.
+      const validProducts = reagentAllProducts.filter(p => 
+        p !== product && 
+        !reagentAllReactions.some(x => x.Reagent === reagent && x.Reactant === reactant && x.Product === p)
+      );
+      distractors = validProducts.sort(() => 0.5 - Math.random()).slice(0, 3);
+    }
+
+    // Safety fallback padding if we don't have enough filtered distractors
+    if (distractors.length < 3) {
+      const fallbackPool = hideReactant ? reagentAllReactants : reagentAllProducts;
+      const remaining = fallbackPool.filter(x => x !== correctAnswer && !distractors.includes(x));
+      while (distractors.length < 3 && remaining.length > 0) {
+        distractors.push(remaining.pop());
+      }
+    }
+
+    const options = [correctAnswer, ...distractors].sort(() => 0.5 - Math.random());
+    const letters = ['A', 'B', 'C', 'D'];
+
+    const optionsDiv = document.getElementById('reagent-practice-options');
+    if (!optionsDiv) return;
+    optionsDiv.innerHTML = '';
+
+    document.getElementById('reagent-practice-hint').innerText = hideReactant ? 'Identify the missing reactant ↓' : 'Identify the missing product ↓';
+
+    options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'chem-opt-btn';
+      btn.innerHTML = `<span class="chem-opt-letter">${letters[i]}</span><span>${escapeHtml(opt)}</span>`;
+      btn.onclick = () => reagentHandleAnswer(opt, targetKey, correctAnswer, hideReactant);
+      optionsDiv.appendChild(btn);
+    });
+
+    // Update session progress bar (resets every 10)
+    const cycle = reagentPracticeSessionCount % 10;
+    document.getElementById('reagent-practice-progress').style.width = (cycle * 10) + '%';
+  }
+
+  function reagentHandleAnswer(chosen, targetKey, correct, hideReactant) {
+    const btns = document.querySelectorAll('#reagent-practice-options .chem-opt-btn');
+    btns.forEach(b => b.disabled = true);
+
+    reagentPracticeSessionCount++;
+    const isCorrect = chosen === correct;
+
+    if (!reagentMyData.stats[targetKey]) {
+      reagentMyData.stats[targetKey] = { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+    }
+
+    if (isCorrect) {
+      reagentPracticeCorrectCount++;
+      reagentMyData.stats[targetKey].correct++;
+      reagentMyData.stats[targetKey].streak++;
+      chemShowFlash('Correct', false);
+    } else {
+      reagentMyData.stats[targetKey].wrong++;
+      reagentMyData.stats[targetKey].streak = 0;
+      chemShowFlash('Wrong', true);
+    }
+
+    reagentMyData.stats[targetKey].lastSeen = Date.now();
+    reagentSave();
+
+    // ─── INTEGRATE INTO SHARED DAILY STATS ───
+    chemEnsureDailyStats();
+    const today = chemTodayKey();
+    if (!chemMyData.dailyStats[today]) {
+      chemMyData.dailyStats[today] = { correct: 0, wrong: 0, attempted: 0, timeSpent: 0 };
+    }
+    chemMyData.dailyStats[today].attempted = (chemMyData.dailyStats[today].attempted || 0) + 1;
+    if (isCorrect) {
+      chemMyData.dailyStats[today].correct = (chemMyData.dailyStats[today].correct || 0) + 1;
+    } else {
+      chemMyData.dailyStats[today].wrong = (chemMyData.dailyStats[today].wrong || 0) + 1;
+    }
+    chemSave(); // Save and update header counters
+    chemSyncAll(false); // Async cloud sync
+
+    // Highlight correct and wrong options
+    btns.forEach(b => {
+      const text = b.innerText.replace(/^[A-D]/, '').trim();
+      if (text === correct) b.classList.add(isCorrect ? 'correct' : 'reveal');
+      if (text === chosen && !isCorrect) b.classList.add('wrong');
+    });
+
+    // Update hint text
+    document.getElementById('reagent-practice-hint').innerText = isCorrect
+      ? `That's right`
+      : `It was: ${correct}`;
+
+    // Reveal the correct text in the hidden equation box
+    const hiddenBlock = document.querySelector('#reagent-practice-eq-container .eq-hidden');
+    if (hiddenBlock) {
+      hiddenBlock.innerText = correct;
+      hiddenBlock.classList.remove('eq-hidden');
+      hiddenBlock.style.borderColor = isCorrect ? '#22c55e' : '#ef4444';
+      hiddenBlock.style.color = isCorrect ? '#22c55e' : '#ef4444';
+      hiddenBlock.style.animation = 'none';
+    }
+
+    setTimeout(reagentNextQuestion, isCorrect ? 1200 : 1800);
+  }
+
+  function reagentLearnNew() {
+    if (!reagentAppReady) return reagentInitApp().then(reagentLearnNew);
+    const remaining = reagentAllReagents.filter(r => !reagentMyData.myList.includes(r));
+    
+    if (remaining.length === 0) {
+      chemShowToast("All available reagents added!");
+      return;
+    }
+    
+    const selected = remaining[Math.floor(Math.random() * remaining.length)];
+    reagentMyData.myList.push(selected);
+    
+    // Initialize stats
+    const newReactions = reagentAllReactions.filter(r => r.Reagent === selected);
+    newReactions.forEach(r => {
+      const key = `${r.Reactant} | ${r.Reagent} | ${r.Product}`;
+      if (!reagentMyData.stats[key]) {
+        reagentMyData.stats[key] = { wrong: 0, correct: 0, streak: 0, lastSeen: 0 };
+      }
+    });
+    reagentSave();
+    chemShowToast(`Added: ${selected} (${newReactions.length} reactions)`);
+  }
+
+  function reagentExportData() {
+    const blob = new Blob([JSON.stringify(chemCombinedData, null, 2)], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = "chemmaster_progress.json"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function reagentImportData(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (imported && imported.compounds && imported.reagents) {
+          chemCombinedData = imported;
+          chemMyData = chemCombinedData.compounds;
+          reagentMyData = chemCombinedData.reagents;
+          chemEnsureDailyStats();
+          reagentSave();
+          chemSave();
+          chemSyncAll(false);
+          chemShowToast("Progress imported.");
+        } else if (imported && imported.myList && imported.stats) {
+          reagentMyData.myList = imported.myList || [];
+          reagentMyData.stats = imported.stats || {};
+          reagentSave();
+          chemSave();
+          chemSyncAll(false);
+          chemShowToast("Progress imported.");
+        } else {
+          chemShowToast("Invalid file format.");
+        }
+      } catch { chemShowToast("Invalid file format."); }
+    };
+    reader.readAsText(file);
+  }
+
+  function reagentShowStats(type) {
+    const isWeak = type === 'weak';
+    const activeReactions = reagentAllReactions.filter(r => reagentMyData.myList.includes(r.Reagent));
+    if (activeReactions.length === 0) {
+      chemShowToast("Add reagents first!");
+      return;
+    }
+
+    const reactionStats = activeReactions.map(r => {
+      const key = `${r.Reactant} | ${r.Reagent} | ${r.Product}`;
+      const s = reagentMyData.stats[key] || { wrong: 0, correct: 0, streak: 0 };
+      const score = s.correct - (s.wrong * 1.5) + (s.streak * 0.5);
+      return { r, key, stats: s, score };
+    });
+
+    // Sort by performance score
+    if (isWeak) {
+      reactionStats.sort((a, b) => a.score - b.score);
+      document.getElementById('reagent-stats-title').innerText = 'Weakest Reactions';
+    } else {
+      reactionStats.sort((a, b) => b.score - a.score);
+      document.getElementById('reagent-stats-title').innerText = 'Strongest Reactions';
+    }
+
+    const top = reactionStats.slice(0, 5);
+    const listDiv = document.getElementById('reagent-stats-list');
+    
+    listDiv.innerHTML = top.length ? top.map((item, i) => {
+      return `<div class="chem-stat-row">
+        <div class="chem-stat-name">
+          ${i + 1}. <span style="color:var(--accent); font-weight:600;">${escapeHtml(item.r.Reagent)}</span> + ${escapeHtml(item.r.Reactant)} ➔ <span style="color:#22c55e;">${escapeHtml(item.r.Product)}</span>
+        </div>
+        <div class="chem-stat-val">✓${item.stats.correct} ✗${item.stats.wrong} 🔥${item.stats.streak}</div>
+      </div>`;
+    }).join('') : '<div class="chem-stat-row"><span class="chem-stat-name">No data yet</span></div>';
+
+    document.getElementById('reagent-stats-sheet').classList.add('open');
+  }
+
+  function reagentCloseStats(event) {
+    if (event.target.id === 'reagent-stats-sheet') {
+      document.getElementById('reagent-stats-sheet').classList.remove('open');
+    }
+  }
+
+  function reagentShowView(id) {
+    document.querySelectorAll('#reagent-practice-content .chem-view').forEach(v => v.classList.remove('active'));
+    const view = document.getElementById('reagent-view-' + id);
+    if (view) view.classList.add('active');
+  }
+
+  function reagentGoHome() {
+    reagentShowView('home');
+    chemSyncAll(false);
+  }
+
   window.chemInitApp = chemInitApp;
   window.chemLearnNew = chemLearnNew;
   window.chemInitLearn = chemInitLearn;
@@ -3540,8 +5113,23 @@ function activeSubTab(pageId, fallback = 'all') {
   window.chemShowStats = chemShowStats;
   window.chemCloseStats = chemCloseStats;
 
+  window.showModeSelection = showModeSelection;
+  window.selectPracticeMode = selectPracticeMode;
+  window.reagentInitApp = reagentInitApp;
+  window.reagentLearnNew = reagentLearnNew;
+  window.reagentInitLearn = reagentInitLearn;
+  window.reagentChangeLearn = reagentChangeLearn;
+  window.reagentInitPractice = reagentInitPractice;
+  window.reagentGoHome = reagentGoHome;
+  window.reagentExportData = reagentExportData;
+  window.reagentImportData = reagentImportData;
+  window.reagentShowStats = reagentShowStats;
+  window.reagentCloseStats = reagentCloseStats;
+
   setInterval(() => {
-    chemSyncAll(false);
+    if (document.visibilityState === 'visible') {
+      chemSyncAll(false);
+    }
   }, 2 * 60 * 1000);
 
   window.addEventListener('beforeunload', () => {

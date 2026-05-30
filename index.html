@@ -1227,16 +1227,53 @@
                                 Correct
                             </div>
 
+                            <!-- MODE SELECTION -->
+                            <div id="chem-view-select-mode" class="chem-view-select-mode" style="display: block; width: 100%;">
+                                <div class="chem-panel" style="text-align: center; padding: 32px 24px;">
+                                    <div class="chem-kicker" style="margin-bottom: 8px;">Practice Section</div>
+                                    <h2 style="font-size: 26px; font-weight: 700; color: var(--text); margin-bottom: 24px; letter-spacing: -0.5px;">Choose your practice mode</h2>
+                                    <div class="mode-cards-grid">
+                                        <!-- Common Names Card -->
+                                        <div class="mode-card" onclick="selectPracticeMode('common-names')">
+                                            <div class="mode-card-content">
+                                                <div class="mode-card-icon">🧪</div>
+                                                <div class="mode-card-text">
+                                                    <div class="mode-card-title">Common Names</div>
+                                                    <div class="mode-card-desc">Master IUPAC structures, common organic compound names, and chemical formulas in multiple modes.</div>
+                                                </div>
+                                            </div>
+                                            <button class="chem-btn chem-btn-primary mode-card-btn">Enter Practice</button>
+                                        </div>
+                                        
+                                        <!-- Reagents Card -->
+                                        <div class="mode-card" onclick="selectPracticeMode('reagents')">
+                                            <div class="mode-card-content">
+                                                <div class="mode-card-icon">⚗️</div>
+                                                <div class="mode-card-text">
+                                                    <div class="mode-card-title">Organic Reagents</div>
+                                                    <div class="mode-card-desc">Practice organic chemistry reagents (like LAH, NaBH4), their starting reactants, and final products in reaction equations.</div>
+                                                </div>
+                                            </div>
+                                            <button class="chem-btn chem-btn-primary mode-card-btn">Enter Practice</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div
                                 class="chem-practice-content"
                                 id="chem-practice-content"
+                                style="display: none;"
                             >
                                 <div class="chem-header">
                                     <div>
                                         <div class="chem-kicker">
                                             Chemistry Practice
                                         </div>
-                                        <div class="chem-title">ChemMaster</div>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div class="chem-title">ChemMaster</div>
+                                            <button class="chem-btn chem-btn-ghost" style="min-height: 28px; padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 6px; margin-bottom: 2px;" onclick="showModeSelection()">Change Mode</button>
+                                        </div>
                                     </div>
                                     <div class="chem-stat-bar">
                                         <div
@@ -1512,6 +1549,111 @@
                                     </button>
                                 </div>
                             </div>
+
+                            <!-- REAGENTS PRACTICE CONTENT -->
+                            <div class="chem-practice-content" id="reagent-practice-content" style="display: none;">
+                                <div class="chem-header">
+                                    <div>
+                                        <div class="chem-kicker">Reagents Practice</div>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div class="chem-title">ReagentMaster</div>
+                                            <button class="chem-btn chem-btn-ghost" style="min-height: 28px; padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 6px; margin-bottom: 2px;" onclick="showModeSelection()">Change Mode</button>
+                                        </div>
+                                    </div>
+                                    <div class="chem-stat-bar">
+                                        <div class="chem-stat-pill" id="reagent-stat-list">Reagents: <strong>0</strong></div>
+                                        <div class="chem-stat-pill" id="reagent-stat-total">Reactions: <strong>0</strong></div>
+                                        <div class="chem-stat-pill" id="reagent-stat-mastered">Mastered: <strong>0</strong></div>
+                                        <div class="chem-stat-pill" id="reagent-stat-today-attempts">Today: <strong>0</strong></div>
+                                        <div class="chem-stat-pill" id="reagent-stat-7day-attempts">7-Day: <strong>0</strong></div>
+                                    </div>
+                                </div>
+
+                                <!-- REAGENTS HOME VIEW -->
+                                <div id="reagent-view-home" class="chem-view active">
+                                    <div class="chem-panel">
+                                        <div class="chem-section-label">Study</div>
+                                        <div class="chem-menu-grid">
+                                            <button class="chem-btn chem-btn-primary chem-full-width" onclick="reagentLearnNew()">+ Add 1 Reagent</button>
+                                            <button class="chem-btn chem-btn-secondary" onclick="reagentInitLearn()">Learn Mode</button>
+                                            <button class="chem-btn chem-btn-secondary" onclick="reagentInitPractice()">Practice Mode</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="chem-panel">
+                                        <div class="chem-section-label">Analytics</div>
+                                        <div class="chem-menu-grid">
+                                            <button class="chem-btn chem-btn-ghost" onclick="reagentShowStats('weak')">Weakest 5</button>
+                                            <button class="chem-btn chem-btn-ghost" onclick="reagentShowStats('strong')">Strongest 5</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="chem-panel">
+                                        <div class="chem-section-label">Data</div>
+                                        <div class="chem-menu-grid">
+                                            <button class="chem-btn chem-btn-ghost" onclick="reagentExportData()">Export</button>
+                                            <button class="chem-btn chem-btn-ghost" onclick="document.getElementById('reagent-import-file').click()">Import</button>
+                                            <input type="file" id="reagent-import-file" class="chem-hidden" onchange="reagentImportData(event)" />
+                                        </div>
+                                    </div>
+
+                                    <!-- LEADERBOARD PANEL (using same combined leaderboard stats) -->
+                                    <div class="chem-panel">
+                                        <div class="chem-board-head">
+                                            <div>
+                                                <div class="chem-section-label">Leaderboard</div>
+                                                <div class="chem-board-sub">Top 30 practice scores</div>
+                                            </div>
+                                            <div class="chem-board-tabs">
+                                                <button class="chem-tab-btn active" id="reagent-board-today" onclick="chemLoadLeaderboard('today')">Today</button>
+                                                <button class="chem-tab-btn" id="reagent-board-week" onclick="chemLoadLeaderboard('week')">Week</button>
+                                            </div>
+                                        </div>
+                                        <div class="chem-board-list" id="reagent-leaderboard-list">
+                                            <div class="empty">Loading leaderboard...</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- REAGENTS LEARN VIEW -->
+                                <div id="reagent-view-learn" class="chem-view">
+                                    <div class="chem-panel">
+                                        <div class="chem-progress-track">
+                                            <div class="chem-progress-fill" id="reagent-learn-progress"></div>
+                                        </div>
+                                        <div class="chem-canvas-wrap">
+                                            <div id="reagent-learn-eq-container" class="reaction-equation"></div>
+                                        </div>
+                                        <div class="chem-compound-name" id="reagent-learn-name">-</div>
+                                        <div class="chem-compound-meta">
+                                            <span><span class="chem-meta-dot chem-dot-green"></span><span id="reagent-learn-correct">0</span> correct</span>
+                                            <span><span class="chem-meta-dot chem-dot-red"></span><span id="reagent-learn-wrong">0</span> wrong</span>
+                                            <span><span class="chem-meta-dot chem-dot-amber"></span><span id="reagent-learn-streak">0</span> streak</span>
+                                        </div>
+                                    </div>
+                                    <div class="chem-learn-nav">
+                                        <button class="chem-btn chem-btn-secondary" onclick="reagentChangeLearn(-1)">Prev</button>
+                                        <div class="chem-nav-counter" id="reagent-learn-index-text">0 / 0</div>
+                                        <button class="chem-btn chem-btn-primary" onclick="reagentChangeLearn(1)">Next</button>
+                                    </div>
+                                    <button class="chem-btn chem-btn-ghost chem-wide-btn" onclick="reagentGoHome()">Back to Menu</button>
+                                </div>
+
+                                <!-- REAGENTS PRACTICE VIEW -->
+                                <div id="reagent-view-practice" class="chem-view">
+                                    <div class="chem-panel">
+                                        <div class="chem-progress-track">
+                                            <div class="chem-progress-fill" id="reagent-practice-progress"></div>
+                                        </div>
+                                        <div class="chem-canvas-wrap">
+                                            <div id="reagent-practice-eq-container" class="reaction-equation"></div>
+                                        </div>
+                                        <div class="chem-question-hint" id="reagent-practice-hint">Identify the missing reactant ↓</div>
+                                    </div>
+                                    <div class="chem-options-grid" id="reagent-practice-options"></div>
+                                    <button class="chem-btn chem-btn-ghost chem-wide-btn" onclick="reagentGoHome()">End Practice</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1737,6 +1879,20 @@
                                 </select>
                             </div>
                         </div>
+
+                        <div class="full-card" style="margin-top: 16px">
+                            <div class="card-header">
+                                <div class="card-title">List Editor</div>
+                                <div
+                                    style="font-size: 12px; color: var(--text3)"
+                                >
+                                    Select which compounds and reagents are included in your active practice lists.
+                                </div>
+                            </div>
+                            <div id="list-editor-root" style="margin-top: 16px">
+                                <!-- Rendered dynamically by main.js -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1875,6 +2031,27 @@
                     onclick="
                         document
                             .getElementById('chem-stats-sheet')
+                            .classList.remove('open')
+                    "
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+
+        <div
+            class="chem-stats-sheet"
+            id="reagent-stats-sheet"
+            onclick="reagentCloseStats(event)"
+        >
+            <div class="chem-stats-panel" onclick="event.stopPropagation()">
+                <div class="chem-stats-title" id="reagent-stats-title">Stats</div>
+                <div id="reagent-stats-list"></div>
+                <button
+                    class="chem-btn chem-btn-ghost chem-wide-btn"
+                    onclick="
+                        document
+                            .getElementById('reagent-stats-sheet')
                             .classList.remove('open')
                     "
                 >
