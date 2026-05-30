@@ -262,3 +262,120 @@ fun DashboardScreen(
         }
     }
 }
+
+@Composable
+fun StatCard(
+    label: String,
+    value: String,
+    sub: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(DarkSurface)
+            .padding(12.dp)
+    ) {
+        Text(
+            text = label,
+            color = TextTertiary,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.5.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            color = TextPrimary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = sub,
+            color = TextTertiary,
+            fontSize = 10.sp,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+fun ClassItemRow(classItem: TimetableClass) {
+    val subject = classItem.subjectName ?: "General"
+    val isPhy = subject.contains("phy", ignoreCase = true)
+    val isChem = subject.contains("chem", ignoreCase = true)
+    val isMath = subject.contains("math", ignoreCase = true)
+    
+    val subjectBg = when {
+        isPhy -> AccentBlue.copy(alpha = 0.15f)
+        isChem -> AccentPurple.copy(alpha = 0.15f)
+        isMath -> SuccessGreen.copy(alpha = 0.12f)
+        else -> AccentBlue.copy(alpha = 0.15f)
+    }
+    
+    val subjectColor = when {
+        isPhy -> AccentBlue
+        isChem -> AccentPurple
+        isMath -> SuccessGreen
+        else -> AccentBlue
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(DarkSurface)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(subjectBg)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = subject,
+                        color = subjectColor,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Text(
+                    text = classItem.classTime ?: "N/A",
+                    color = TextTertiary,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = classItem.teacherName ?: "Instructor",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        
+        if (!classItem.joinUrl.isNullOrEmpty()) {
+            Button(
+                onClick = { /* Launch Intent to join class */ },
+                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Text("Join", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
+    }
+}
+
